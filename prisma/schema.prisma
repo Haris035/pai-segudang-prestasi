@@ -1,0 +1,62 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Student {
+  id           String        @id @default(cuid())
+  name         String
+  nim          String        @unique
+  semester     String?
+  className    String?
+  phone        String
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  achievements Achievement[]
+}
+
+model Achievement {
+  id                String   @id @default(cuid())
+
+  studentId         String
+  student            Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  achievementName   String
+  category          String
+  level             String
+  rank              String?
+  competitionName   String
+  organizer         String?
+  achievementDate   DateTime
+  description       String?
+
+  proofImageUrl     String?
+  studentPhotoUrl   String?
+
+  status            String   @default("PENDING")
+
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([studentId])
+  @@index([category])
+  @@index([level])
+  @@index([status])
+  @@index([achievementDate])
+}
+
+model Suggestion {
+  id        String   @id @default(cuid())
+  name      String?
+  contact   String?
+  type      String
+  message   String
+  status    String   @default("NEW")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

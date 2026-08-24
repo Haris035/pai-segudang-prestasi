@@ -1,26 +1,120 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #071a33;
+  --foreground: #f8fafc;
+
+  --navy-950: #041225;
+  --navy-900: #071a33;
+  --navy-800: #0b2342;
+  --navy-700: #0d2d52;
+
+  --blue-600: #2563eb;
+  --blue-500: #3b82f6;
+  --sky-400: #38bdf8;
+
+  --text-primary: #f8fafc;
+  --text-secondary: #a9bdd3;
+
+  --gold: #fbbf24;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+* {
+  box-sizing: border-box;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  scroll-behavior: smooth;
 }
 
 body {
+  margin: 0;
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+::selection {
+  background: #2563eb;
+  color: white;
+}
+
+.container-main {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding-left: 24px;
+  padding-right: 24px;
+}
+
+@media (max-width: 640px) {
+  .container-main {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+}
+
+/* Glass effect */
+
+.glass {
+  background: rgba(13, 45, 82, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+}
+
+/* Glow */
+
+.blue-glow {
+  box-shadow:
+    0 0 40px rgba(37, 99, 235, 0.15),
+    0 0 80px rgba(56, 189, 248, 0.05);
+}
+
+/* Gradient text */
+
+.gradient-text {
+  background: linear-gradient(90deg,
+      #ffffff 0%,
+      #93c5fd 50%,
+      #38bdf8 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Subtle grid */
+
+.bg-grid {
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.025) 1px,
+      transparent 1px),
+    linear-gradient(90deg,
+      rgba(255, 255, 255, 0.025) 1px,
+      transparent 1px);
+  background-size: 40px 40px;
+}
+
+/* Scrollbar */
+
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #041225;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #1e4775;
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #2563eb;
 }
