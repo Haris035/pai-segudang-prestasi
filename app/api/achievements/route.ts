@@ -1,11 +1,7 @@
 import { NextResponse } from "next/server";
+import { put } from "@vercel/blob";
 import { prisma } from "@/lib/prisma";
-import fs from "fs/promises";
-import path from "path";
-import crypto from "crypto";
-import {
-    cookies,
-} from "next/headers";
+import { cookies } from "next/headers";
 
 import {
     COOKIE_NAME,
@@ -20,17 +16,11 @@ export const dynamic = "force-dynamic";
 // =====================================================
 
 async function isAdmin() {
-    const cookieStore =
-        await cookies();
+    const cookieStore = await cookies();
 
-    const token =
-        cookieStore.get(
-            COOKIE_NAME
-        )?.value;
+    const token = cookieStore.get(COOKIE_NAME)?.value;
 
-    return verifyAdminToken(
-        token
-    );
+    return verifyAdminToken(token);
 }
 
 // =====================================================
@@ -45,30 +35,20 @@ async function isAdmin() {
 // semua status
 // =====================================================
 
-export async function GET(
-    request: Request
-) {
+export async function GET(request: Request) {
     try {
-        const url =
-            new URL(request.url);
+        const url = new URL(request.url);
 
         const adminRequested =
-            url.searchParams.get(
-                "admin"
-            ) === "true";
+            url.searchParams.get("admin") === "true";
 
-        const authenticated =
-            await isAdmin();
+        const authenticated = await isAdmin();
 
-        if (
-            adminRequested &&
-            !authenticated
-        ) {
+        if (adminRequested && !authenticated) {
             return NextResponse.json(
                 {
                     success: false,
-                    message:
-                        "Akses admin diperlukan.",
+                    message: "Akses admin diperlukan.",
                 },
                 {
                     status: 401,
@@ -77,26 +57,21 @@ export async function GET(
         }
 
         const achievements =
-            await prisma.achievement.findMany(
-                {
-                    where:
-                        adminRequested
-                            ? {}
-                            : {
-                                status:
-                                    "APPROVED",
-                            },
-
-                    include: {
-                        student: true,
+            await prisma.achievement.findMany({
+                where: adminRequested
+                    ? {}
+                    : {
+                        status: "APPROVED",
                     },
 
-                    orderBy: {
-                        createdAt:
-                            "desc",
-                    },
-                }
-            );
+                include: {
+                    student: true,
+                },
+
+                orderBy: {
+                    createdAt: "desc",
+                },
+            });
 
         return NextResponse.json(
             {
@@ -122,8 +97,7 @@ export async function GET(
         return NextResponse.json(
             {
                 success: false,
-                message:
-                    "Gagal mengambil data prestasi.",
+                message: "Gagal mengambil data prestasi.",
                 data: [],
             },
             {
@@ -138,124 +112,81 @@ export async function GET(
 // PUBLIC
 // =====================================================
 
-export async function POST(
-    request: Request
-) {
+export async function POST(request: Request) {
     try {
-        const formData =
-            await request.formData();
+        const formData = await request.formData();
 
         // =================================================
         // DATA MAHASISWA
         // =================================================
 
-        const studentName =
-            String(
-                formData.get(
-                    "studentName"
-                ) || ""
-            ).trim();
+        const studentName = String(
+            formData.get("studentName") || ""
+        ).trim();
 
-        const nim =
-            String(
-                formData.get("nim") ||
-                ""
-            ).trim();
+        const nim = String(
+            formData.get("nim") || ""
+        ).trim();
 
-        const semester =
-            String(
-                formData.get(
-                    "semester"
-                ) || ""
-            ).trim();
+        const semester = String(
+            formData.get("semester") || ""
+        ).trim();
 
-        const className =
-            String(
-                formData.get(
-                    "className"
-                ) || ""
-            ).trim();
+        const className = String(
+            formData.get("className") || ""
+        ).trim();
 
-        const phone =
-            String(
-                formData.get("phone") ||
-                ""
-            ).trim();
+        const phone = String(
+            formData.get("phone") || ""
+        ).trim();
 
         // =================================================
         // DATA PRESTASI
         // =================================================
 
-        const achievementName =
-            String(
-                formData.get(
-                    "achievementName"
-                ) || ""
-            ).trim();
+        const achievementName = String(
+            formData.get("achievementName") || ""
+        ).trim();
 
-        const category =
-            String(
-                formData.get(
-                    "category"
-                ) || ""
-            ).trim();
+        const category = String(
+            formData.get("category") || ""
+        ).trim();
 
-        const level =
-            String(
-                formData.get("level") ||
-                ""
-            ).trim();
+        const level = String(
+            formData.get("level") || ""
+        ).trim();
 
-        const rank =
-            String(
-                formData.get("rank") ||
-                ""
-            ).trim();
+        const rank = String(
+            formData.get("rank") || ""
+        ).trim();
 
-        const competitionName =
-            String(
-                formData.get(
-                    "competitionName"
-                ) || ""
-            ).trim();
+        const competitionName = String(
+            formData.get("competitionName") || ""
+        ).trim();
 
-        const organizer =
-            String(
-                formData.get(
-                    "organizer"
-                ) || ""
-            ).trim();
+        const organizer = String(
+            formData.get("organizer") || ""
+        ).trim();
 
-        const achievementDate =
-            String(
-                formData.get(
-                    "achievementDate"
-                ) || ""
-            ).trim();
+        const achievementDate = String(
+            formData.get("achievementDate") || ""
+        ).trim();
 
-        const description =
-            String(
-                formData.get(
-                    "description"
-                ) || ""
-            ).trim();
+        const description = String(
+            formData.get("description") || ""
+        ).trim();
 
         // =================================================
         // FILE
         // =================================================
 
-        const proofFile =
-            formData.get(
-                "proofFile"
-            );
+        const proofFile = formData.get("proofFile");
 
         const studentPhoto =
-            formData.get(
-                "studentPhoto"
-            );
+            formData.get("studentPhoto");
 
         // =================================================
-        // VALIDASI
+        // VALIDASI DATA
         // =================================================
 
         if (
@@ -271,8 +202,7 @@ export async function POST(
             return NextResponse.json(
                 {
                     success: false,
-                    message:
-                        "Data wajib belum lengkap.",
+                    message: "Data wajib belum lengkap.",
                 },
                 {
                     status: 400,
@@ -286,10 +216,7 @@ export async function POST(
 
         if (
             !proofFile ||
-            !(
-                proofFile instanceof
-                File
-            ) ||
+            !(proofFile instanceof File) ||
             proofFile.size <= 0
         ) {
             return NextResponse.json(
@@ -317,24 +244,15 @@ export async function POST(
         const maxFileSize =
             5 * 1024 * 1024;
 
-        function validateImage(
-            file: File
-        ) {
+        function validateImage(file: File) {
             return (
-                allowedTypes.includes(
-                    file.type
-                ) &&
+                allowedTypes.includes(file.type) &&
                 file.size > 0 &&
-                file.size <=
-                maxFileSize
+                file.size <= maxFileSize
             );
         }
 
-        if (
-            !validateImage(
-                proofFile
-            )
-        ) {
+        if (!validateImage(proofFile)) {
             return NextResponse.json(
                 {
                     success: false,
@@ -348,15 +266,10 @@ export async function POST(
         }
 
         if (
-            studentPhoto instanceof
-            File &&
+            studentPhoto instanceof File &&
             studentPhoto.size > 0
         ) {
-            if (
-                !validateImage(
-                    studentPhoto
-                )
-            ) {
+            if (!validateImage(studentPhoto)) {
                 return NextResponse.json(
                     {
                         success: false,
@@ -371,84 +284,41 @@ export async function POST(
         }
 
         // =================================================
-        // FOLDER UPLOAD
+        // FUNCTION UPLOAD KE VERCEL BLOB
         // =================================================
 
-        const uploadDirectory =
-            path.join(
-                process.cwd(),
-                "public",
-                "uploads",
-                "achievements"
-            );
-
-        await fs.mkdir(
-            uploadDirectory,
-            {
-                recursive: true,
-            }
-        );
-
-        // =================================================
-        // FUNCTION SIMPAN FILE
-        // =================================================
-
-        async function saveFile(
-            file: File
-        ): Promise<string> {
-            let extension =
-                ".jpg";
-
-            if (
-                file.type ===
-                "image/png"
-            ) {
-                extension =
-                    ".png";
-            }
-
-            if (
-                file.type ===
-                "image/webp"
-            ) {
-                extension =
-                    ".webp";
-            }
+        async function uploadFile(file: File) {
+            const extension =
+                file.type === "image/png"
+                    ? "png"
+                    : file.type === "image/webp"
+                        ? "webp"
+                        : "jpg";
 
             const fileName =
-                `${crypto.randomUUID()}${extension}`;
+                `achievements/${crypto.randomUUID()}.${extension}`;
 
-            const filePath =
-                path.join(
-                    uploadDirectory,
-                    fileName
-                );
-
-            const bytes =
-                await file.arrayBuffer();
-
-            const buffer =
-                Buffer.from(bytes);
-
-            await fs.writeFile(
-                filePath,
-                buffer
+            const blob = await put(
+                fileName,
+                file,
+                {
+                    access: "public",
+                    addRandomSuffix: false,
+                }
             );
 
-            return `/uploads/achievements/${fileName}`;
+            return blob.url;
         }
 
         // =================================================
-        // SIMPAN BUKTI
+        // UPLOAD BUKTI PRESTASI
         // =================================================
 
         const proofImageUrl =
-            await saveFile(
-                proofFile
-            );
+            await uploadFile(proofFile);
 
         // =================================================
-        // SIMPAN FOTO MAHASISWA
+        // UPLOAD FOTO MAHASISWA
         // =================================================
 
         let studentPhotoUrl:
@@ -456,14 +326,11 @@ export async function POST(
             | null = null;
 
         if (
-            studentPhoto instanceof
-            File &&
+            studentPhoto instanceof File &&
             studentPhoto.size > 0
         ) {
             studentPhotoUrl =
-                await saveFile(
-                    studentPhoto
-                );
+                await uploadFile(studentPhoto);
         }
 
         // =================================================
@@ -471,95 +338,80 @@ export async function POST(
         // =================================================
 
         const student =
-            await prisma.student.upsert(
-                {
-                    where: {
-                        nim,
-                    },
+            await prisma.student.upsert({
+                where: {
+                    nim,
+                },
 
-                    update: {
-                        name:
-                            studentName,
+                update: {
+                    name: studentName,
 
-                        semester:
-                            semester ||
-                            null,
+                    semester:
+                        semester || null,
 
-                        className:
-                            className ||
-                            null,
+                    className:
+                        className || null,
 
-                        phone,
-                    },
+                    phone,
+                },
 
-                    create: {
-                        name:
-                            studentName,
+                create: {
+                    name: studentName,
 
-                        nim,
+                    nim,
 
-                        semester:
-                            semester ||
-                            null,
+                    semester:
+                        semester || null,
 
-                        className:
-                            className ||
-                            null,
+                    className:
+                        className || null,
 
-                        phone,
-                    },
-                }
-            );
+                    phone,
+                },
+            });
 
         // =================================================
         // ACHIEVEMENT
         // =================================================
 
         const achievement =
-            await prisma.achievement.create(
-                {
-                    data: {
-                        studentId:
-                            student.id,
+            await prisma.achievement.create({
+                data: {
+                    studentId: student.id,
 
-                        achievementName,
+                    achievementName,
 
-                        category,
+                    category,
 
-                        level,
+                    level,
 
-                        rank:
-                            rank ||
-                            null,
+                    rank:
+                        rank || null,
 
-                        competitionName,
+                    competitionName,
 
-                        organizer:
-                            organizer ||
-                            null,
+                    organizer:
+                        organizer || null,
 
-                        achievementDate:
-                            new Date(
-                                achievementDate
-                            ),
+                    achievementDate:
+                        new Date(
+                            achievementDate
+                        ),
 
-                        description:
-                            description ||
-                            null,
+                    description:
+                        description || null,
 
-                        proofImageUrl,
+                    proofImageUrl,
 
-                        studentPhotoUrl,
+                    studentPhotoUrl,
 
-                        status:
-                            "PENDING",
-                    },
+                    status: "PENDING",
+                },
 
-                    include: {
-                        student: true,
-                    },
-                }
-            );
+                include: {
+                    student: true,
+                },
+            });
 
         return NextResponse.json(
             {
