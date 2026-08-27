@@ -7,6 +7,7 @@ import {
     useState,
 } from "react";
 import Link from "next/link";
+import { upload } from "@vercel/blob/client";
 import {
     ArrowLeft,
     Award,
@@ -76,6 +77,9 @@ export default function LaporPrestasiPage() {
     const [isSubmitting, setIsSubmitting] =
         useState(false);
 
+    const [uploadProgress, setUploadProgress] =
+        useState(0);
+
     const [errorMessage, setErrorMessage] =
         useState("");
 
@@ -116,6 +120,7 @@ export default function LaporPrestasiPage() {
 
         setSubmitted(false);
         setErrorMessage("");
+        setUploadProgress(0);
 
         if (!file.type.startsWith("image/")) {
             setErrorMessage(
@@ -164,6 +169,7 @@ export default function LaporPrestasiPage() {
 
         setSubmitted(false);
         setErrorMessage("");
+        setUploadProgress(0);
 
         if (!file.type.startsWith("image/")) {
             setErrorMessage(
@@ -255,10 +261,7 @@ export default function LaporPrestasiPage() {
 
         setSubmitted(false);
         setErrorMessage("");
-
-        // -----------------------------------------------
-        // VALIDASI BUKTI
-        // -----------------------------------------------
+        setUploadProgress(0);
 
         if (!proofFile) {
             setErrorMessage(
@@ -273,90 +276,166 @@ export default function LaporPrestasiPage() {
             return;
         }
 
+        if (proofFile.size > 5 * 1024 * 1024) {
+            setErrorMessage(
+                "Ukuran bukti prestasi maksimal 5 MB.",
+            );
+            return;
+        }
+
+        if (studentPhoto && studentPhoto.size > 5 * 1024 * 1024) {
+            setErrorMessage(
+                "Ukuran foto mahasiswa maksimal 5 MB.",
+            );
+            return;
+        }
+
         try {
             setIsSubmitting(true);
+            setUploadProgress(5);
 
-            // ---------------------------------------------
-            // AMBIL SEMUA DATA FORM
-            // ---------------------------------------------
+            const form = event.currentTarget;
+            const formData = new FormData(form);
 
-            const form =
-                event.currentTarget;
-
-            const formData =
-                new FormData(form);
-
-            // ---------------------------------------------
-            // FILE BUKTI
-            // ---------------------------------------------
-
-            formData.set(
-                "proofFile",
+            // Upload bukti langsung ke Vercel Blob.
+            const proofBlob = await upload(
+                `achievements/${crypto.randomUUID()}-${proofFile.name}`,
                 proofFile,
+                {
+                    access: "public",
+                    handleUploadUrl: "/api/upload",
+                    onUploadProgress: ({ percentage }) => {
+                        const safePercentage = Math.min(
+                            100,
+                            Math.max(0, percentage),
+                        );
+
+                        // Bukti: 5% - 55%
+                        setUploadProgress(
+                            Math.round(5 + safePercentage * 0.5),
+                        );
+                    },
+                },
             );
 
-            // ---------------------------------------------
-            // FOTO MAHASISWA
-            // ---------------------------------------------
+            setUploadProgress(55);
+
+            // Upload foto mahasiswa langsung ke Vercel Blob.
+            let studentPhotoUrl: string | null = null;
 
             if (studentPhoto) {
-                formData.set(
-                    "studentPhoto",
+                const studentBlob = await upload(
+                    `achievements/${crypto.randomUUID()}-${studentPhoto.name}`,
                     studentPhoto,
-                );
-            }
-
-            // ---------------------------------------------
-            // KIRIM KE API
-            // ---------------------------------------------
-
-            const response =
-                await fetch(
-                    "/api/achievements",
                     {
-                        method: "POST",
-                        body: formData,
+                        access: "public",
+                        handleUploadUrl: "/api/upload",
+                        onUploadProgress: ({ percentage }) => {
+                            const safePercentage = Math.min(
+                                100,
+                                Math.max(0, percentage),
+                            );
+
+                            // Foto: 55% - 80%
+                            setUploadProgress(
+                                Math.round(55 + safePercentage * 0.25),
+                            );
+                        },
                     },
                 );
 
-            const result =
-                await response.json();
+                studentPhotoUrl = studentBlob.url;
+            }
 
-            // ---------------------------------------------
-            // ERROR DARI API
-            // ---------------------------------------------
+            setUploadProgress(80);
+
+            // Kirim data teks + URL Blob ke API achievement.
+            const payload = {
+                studentName: String(formData.get("studentName") || "").trim(),
+                nim: String(formData.get("nim") || "").trim(),
+                semester: String(formData.get("semester") || "").trim(),
+                className: String(formData.get("className") || "").trim(),
+                phone: String(formData.get("phone") || "").trim(),
+                achievementName: String(formData.get("achievementName") || "").trim(),
+                category: String(formData.get("category") || "").trim(),
+                level: String(formData.get("level") || "").trim(),
+                rank: String(formData.get("rank") || "").trim(),
+                competitionName: String(formData.get("competitionName") || "").trim(),
+                organizer: String(formData.get("organizer") || "").trim(),
+                achievementDate: String(formData.get("achievementDate") || "").trim(),
+                description: String(formData.get("description") || "").trim(),
+                proofImageUrl: proofBlob.url,
+                studentPhotoUrl,
+            };
+
+            setUploadProgress(85);
+
+            const response = await fetch("/api/achievements", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify(payload),
+            });
+
+            let result: {
+                success?: boolean;
+                message?: string;
+            } | null = null;
+
+            try {
+                result = await response.json();
+            } catch {
+                result = null;
+            }
 
             if (!response.ok) {
                 throw new Error(
-                    result?.message ||
-                    "Gagal menyimpan prestasi.",
+                    result?.message || "Gagal menyimpan prestasi.",
                 );
             }
 
-            // ---------------------------------------------
-            // BERHASIL
-            // ---------------------------------------------
-
+            setUploadProgress(100);
             setSubmitted(true);
             setErrorMessage("");
 
-            // Reset form
             form.reset();
 
-            // Reset file
-            removeProof();
-            removeStudentPhoto();
+            if (proofPreview) {
+                URL.revokeObjectURL(proofPreview);
+            }
 
-            // Scroll ke atas
+            if (studentPhotoPreview) {
+                URL.revokeObjectURL(studentPhotoPreview);
+            }
+
+            setProofFile(null);
+            setProofPreview(null);
+            setStudentPhoto(null);
+            setStudentPhotoPreview(null);
+
+            const proofInput = document.getElementById(
+                "proof",
+            ) as HTMLInputElement | null;
+
+            if (proofInput) {
+                proofInput.value = "";
+            }
+
+            const studentPhotoInput = document.getElementById(
+                "studentPhoto",
+            ) as HTMLInputElement | null;
+
+            if (studentPhotoInput) {
+                studentPhotoInput.value = "";
+            }
+
             window.scrollTo({
                 top: 0,
                 behavior: "smooth",
             });
         } catch (error) {
-            console.error(
-                "SUBMIT PRESTASI ERROR:",
-                error,
-            );
+            console.error("SUBMIT PRESTASI ERROR:", error);
 
             setErrorMessage(
                 error instanceof Error
@@ -1016,26 +1095,47 @@ export default function LaporPrestasiPage() {
 
                             </div>
 
+                            {isSubmitting && (
+                                <div className="w-full sm:w-auto sm:min-w-[240px]">
+                                    <div className="mb-2 flex items-center justify-between text-[11px] font-semibold text-slate-400">
+                                        <span className="flex items-center gap-2">
+                                            <span className="h-2 w-2 animate-pulse rounded-full bg-blue-400" />
+                                            Mengirim prestasi...
+                                        </span>
+                                        <span className="text-blue-300">
+                                            {uploadProgress}%
+                                        </span>
+                                    </div>
+
+                                    <div className="h-2 overflow-hidden rounded-full bg-white/10">
+                                        <div
+                                            className="h-full rounded-full bg-blue-500 transition-all duration-300 ease-out"
+                                            style={{ width: `${uploadProgress}%` }}
+                                        />
+                                    </div>
+                                </div>
+                            )}
+
                             <button
                                 type="submit"
                                 disabled={isSubmitting}
-                                className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-7 py-3.5 text-sm font-bold text-white shadow-xl shadow-blue-600/20 transition hover:-translate-y-0.5 hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-60"
+                                className="inline-flex min-w-[190px] flex-col items-center justify-center gap-1 rounded-xl bg-blue-600 px-7 py-3.5 text-sm font-bold text-white shadow-xl shadow-blue-600/20 transition hover:-translate-y-0.5 hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-70"
                             >
-
                                 {isSubmitting ? (
                                     <>
-                                        <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-
-                                        Mengirim...
+                                        <span className="flex items-center gap-2">
+                                            <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                                            Mengirim prestasi...
+                                        </span>
                                     </>
                                 ) : (
                                     <>
-                                        <Send size={17} />
-
-                                        Kirim Prestasi
+                                        <span className="flex items-center gap-2">
+                                            <Send size={17} />
+                                            Kirim Prestasi
+                                        </span>
                                     </>
                                 )}
-
                             </button>
 
                         </div>

@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { put } from "@vercel/blob";
 import { prisma } from "@/lib/prisma";
 import { cookies } from "next/headers";
 
@@ -7,6 +6,8 @@ import {
     COOKIE_NAME,
     verifyAdminToken,
 } from "@/lib/admin-auth";
+
+import { createSlug } from "@/lib/slug";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -18,21 +19,14 @@ export const dynamic = "force-dynamic";
 async function isAdmin() {
     const cookieStore = await cookies();
 
-    const token = cookieStore.get(COOKIE_NAME)?.value;
+    const token =
+        cookieStore.get(COOKIE_NAME)?.value;
 
     return verifyAdminToken(token);
 }
 
 // =====================================================
 // GET
-//
-// PUBLIC:
-// /api/achievements
-// hanya APPROVED
-//
-// ADMIN:
-// /api/achievements?admin=true
-// semua status
 // =====================================================
 
 export async function GET(request: Request) {
@@ -42,13 +36,18 @@ export async function GET(request: Request) {
         const adminRequested =
             url.searchParams.get("admin") === "true";
 
-        const authenticated = await isAdmin();
+        const authenticated =
+            await isAdmin();
 
-        if (adminRequested && !authenticated) {
+        if (
+            adminRequested &&
+            !authenticated
+        ) {
             return NextResponse.json(
                 {
                     success: false,
-                    message: "Akses admin diperlukan.",
+                    message:
+                        "Akses admin diperlukan.",
                 },
                 {
                     status: 401,
@@ -80,10 +79,13 @@ export async function GET(request: Request) {
             },
             {
                 status: 200,
+
                 headers: {
                     "Cache-Control":
                         "no-store, no-cache, must-revalidate, proxy-revalidate",
+
                     Pragma: "no-cache",
+
                     Expires: "0",
                 },
             }
@@ -97,7 +99,8 @@ export async function GET(request: Request) {
         return NextResponse.json(
             {
                 success: false,
-                message: "Gagal mengambil data prestasi.",
+                message:
+                    "Gagal mengambil data prestasi.",
                 data: [],
             },
             {
@@ -109,81 +112,108 @@ export async function GET(request: Request) {
 
 // =====================================================
 // POST
+//
 // PUBLIC
+//
+// Browser mengirim JSON:
+// - data mahasiswa
+// - data prestasi
+// - URL Vercel Blob
 // =====================================================
 
 export async function POST(request: Request) {
     try {
-        const formData = await request.formData();
+        const body =
+            await request.json();
 
         // =================================================
         // DATA MAHASISWA
         // =================================================
 
-        const studentName = String(
-            formData.get("studentName") || ""
-        ).trim();
+        const studentName =
+            String(
+                body?.studentName || ""
+            ).trim();
 
-        const nim = String(
-            formData.get("nim") || ""
-        ).trim();
+        const nim =
+            String(
+                body?.nim || ""
+            ).trim();
 
-        const semester = String(
-            formData.get("semester") || ""
-        ).trim();
+        const semester =
+            String(
+                body?.semester || ""
+            ).trim();
 
-        const className = String(
-            formData.get("className") || ""
-        ).trim();
+        const className =
+            String(
+                body?.className || ""
+            ).trim();
 
-        const phone = String(
-            formData.get("phone") || ""
-        ).trim();
+        const phone =
+            String(
+                body?.phone || ""
+            ).trim();
 
         // =================================================
         // DATA PRESTASI
         // =================================================
 
-        const achievementName = String(
-            formData.get("achievementName") || ""
-        ).trim();
+        const achievementName =
+            String(
+                body?.achievementName || ""
+            ).trim();
 
-        const category = String(
-            formData.get("category") || ""
-        ).trim();
+        const category =
+            String(
+                body?.category || ""
+            ).trim();
 
-        const level = String(
-            formData.get("level") || ""
-        ).trim();
+        const level =
+            String(
+                body?.level || ""
+            ).trim();
 
-        const rank = String(
-            formData.get("rank") || ""
-        ).trim();
+        const rank =
+            String(
+                body?.rank || ""
+            ).trim();
 
-        const competitionName = String(
-            formData.get("competitionName") || ""
-        ).trim();
+        const competitionName =
+            String(
+                body?.competitionName || ""
+            ).trim();
 
-        const organizer = String(
-            formData.get("organizer") || ""
-        ).trim();
+        const organizer =
+            String(
+                body?.organizer || ""
+            ).trim();
 
-        const achievementDate = String(
-            formData.get("achievementDate") || ""
-        ).trim();
+        const achievementDate =
+            String(
+                body?.achievementDate || ""
+            ).trim();
 
-        const description = String(
-            formData.get("description") || ""
-        ).trim();
+        const description =
+            String(
+                body?.description || ""
+            ).trim();
 
         // =================================================
-        // FILE
+        // URL FILE
         // =================================================
 
-        const proofFile = formData.get("proofFile");
+        const proofImageUrl =
+            String(
+                body?.proofImageUrl || ""
+            ).trim();
 
-        const studentPhoto =
-            formData.get("studentPhoto");
+        const studentPhotoUrl =
+            body?.studentPhotoUrl
+                ? String(
+                    body.studentPhotoUrl
+                ).trim()
+                : null;
 
         // =================================================
         // VALIDASI DATA
@@ -202,7 +232,8 @@ export async function POST(request: Request) {
             return NextResponse.json(
                 {
                     success: false,
-                    message: "Data wajib belum lengkap.",
+                    message:
+                        "Data wajib belum lengkap.",
                 },
                 {
                     status: 400,
@@ -211,19 +242,19 @@ export async function POST(request: Request) {
         }
 
         // =================================================
-        // VALIDASI BUKTI
+        // VALIDASI URL BUKTI
         // =================================================
 
         if (
-            !proofFile ||
-            !(proofFile instanceof File) ||
-            proofFile.size <= 0
+            !isValidBlobUrl(
+                proofImageUrl
+            )
         ) {
             return NextResponse.json(
                 {
                     success: false,
                     message:
-                        "Bukti prestasi wajib diupload.",
+                        "URL bukti prestasi tidak valid.",
                 },
                 {
                     status: 400,
@@ -232,32 +263,20 @@ export async function POST(request: Request) {
         }
 
         // =================================================
-        // VALIDASI FILE
+        // VALIDASI URL FOTO MAHASISWA
         // =================================================
 
-        const allowedTypes = [
-            "image/jpeg",
-            "image/png",
-            "image/webp",
-        ];
-
-        const maxFileSize =
-            5 * 1024 * 1024;
-
-        function validateImage(file: File) {
-            return (
-                allowedTypes.includes(file.type) &&
-                file.size > 0 &&
-                file.size <= maxFileSize
-            );
-        }
-
-        if (!validateImage(proofFile)) {
+        if (
+            studentPhotoUrl &&
+            !isValidBlobUrl(
+                studentPhotoUrl
+            )
+        ) {
             return NextResponse.json(
                 {
                     success: false,
                     message:
-                        "Bukti prestasi harus berupa JPG, PNG, atau WEBP dengan ukuran maksimal 5 MB.",
+                        "URL foto mahasiswa tidak valid.",
                 },
                 {
                     status: 400,
@@ -265,72 +284,30 @@ export async function POST(request: Request) {
             );
         }
 
-        if (
-            studentPhoto instanceof File &&
-            studentPhoto.size > 0
-        ) {
-            if (!validateImage(studentPhoto)) {
-                return NextResponse.json(
-                    {
-                        success: false,
-                        message:
-                            "Foto mahasiswa harus berupa JPG, PNG, atau WEBP dengan ukuran maksimal 5 MB.",
-                    },
-                    {
-                        status: 400,
-                    }
-                );
-            }
-        }
-
         // =================================================
-        // FUNCTION UPLOAD KE VERCEL BLOB
+        // VALIDASI TANGGAL
         // =================================================
 
-        async function uploadFile(file: File) {
-            const extension =
-                file.type === "image/png"
-                    ? "png"
-                    : file.type === "image/webp"
-                        ? "webp"
-                        : "jpg";
-
-            const fileName =
-                `achievements/${crypto.randomUUID()}.${extension}`;
-
-            const blob = await put(
-                fileName,
-                file,
-                {
-                    access: "public",
-                    addRandomSuffix: false,
-                }
+        const parsedAchievementDate =
+            new Date(
+                achievementDate
             );
 
-            return blob.url;
-        }
-
-        // =================================================
-        // UPLOAD BUKTI PRESTASI
-        // =================================================
-
-        const proofImageUrl =
-            await uploadFile(proofFile);
-
-        // =================================================
-        // UPLOAD FOTO MAHASISWA
-        // =================================================
-
-        let studentPhotoUrl:
-            | string
-            | null = null;
-
         if (
-            studentPhoto instanceof File &&
-            studentPhoto.size > 0
+            Number.isNaN(
+                parsedAchievementDate.getTime()
+            )
         ) {
-            studentPhotoUrl =
-                await uploadFile(studentPhoto);
+            return NextResponse.json(
+                {
+                    success: false,
+                    message:
+                        "Tanggal prestasi tidak valid.",
+                },
+                {
+                    status: 400,
+                }
+            );
         }
 
         // =================================================
@@ -371,13 +348,55 @@ export async function POST(request: Request) {
             });
 
         // =================================================
+        // GENERATE SLUG
+        // =================================================
+
+        const baseSlug =
+            createSlug(
+                `${achievementName}-${studentName}`
+            );
+
+        let slug =
+            baseSlug ||
+            `prestasi-${Date.now()}`;
+
+        let counter = 2;
+
+        while (true) {
+            const existing =
+                await prisma.achievement.findUnique(
+                    {
+                        where: {
+                            slug,
+                        },
+
+                        select: {
+                            id: true,
+                        },
+                    }
+                );
+
+            if (!existing) {
+                break;
+            }
+
+            slug =
+                `${baseSlug}-${counter}`;
+
+            counter++;
+        }
+
+        // =================================================
         // ACHIEVEMENT
         // =================================================
 
         const achievement =
             await prisma.achievement.create({
                 data: {
-                    studentId: student.id,
+                    slug,
+
+                    studentId:
+                        student.id,
 
                     achievementName,
 
@@ -394,9 +413,7 @@ export async function POST(request: Request) {
                         organizer || null,
 
                     achievementDate:
-                        new Date(
-                            achievementDate
-                        ),
+                        parsedAchievementDate,
 
                     description:
                         description || null,
@@ -413,11 +430,17 @@ export async function POST(request: Request) {
                 },
             });
 
+        // =================================================
+        // RESPONSE
+        // =================================================
+
         return NextResponse.json(
             {
                 success: true,
+
                 message:
                     "Prestasi berhasil dilaporkan dan menunggu verifikasi admin.",
+
                 data: achievement,
             },
             {
@@ -433,6 +456,7 @@ export async function POST(request: Request) {
         return NextResponse.json(
             {
                 success: false,
+
                 message:
                     "Terjadi kesalahan saat menyimpan prestasi.",
             },
@@ -440,5 +464,36 @@ export async function POST(request: Request) {
                 status: 500,
             }
         );
+    }
+}
+
+// =====================================================
+// VALIDASI URL VERCEL BLOB
+// =====================================================
+
+function isValidBlobUrl(
+    value: string
+) {
+    try {
+        const url =
+            new URL(value);
+
+        if (
+            url.protocol !==
+            "https:"
+        ) {
+            return false;
+        }
+
+        return (
+            url.hostname.endsWith(
+                ".blob.vercel-storage.com"
+            ) ||
+            url.hostname.endsWith(
+                ".public.blob.vercel-storage.com"
+            )
+        );
+    } catch {
+        return false;
     }
 }

@@ -22,6 +22,7 @@ model Student {
 
 model Achievement {
   id                String   @id @default(cuid())
+  slug String? @unique
 
   studentId         String
   student            Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
