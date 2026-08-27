@@ -17,6 +17,7 @@ import {
 
 type Achievement = {
     id: string;
+    slug: string | null;
     name: string;
     achievement: string;
     level: string;
@@ -99,13 +100,7 @@ export default function PrestasiPage() {
 
                 // =================================================
                 // KEAMANAN PUBLIK
-                //
-                // WALaupun API sudah melakukan filter APPROVED,
-                // halaman publik tetap melakukan filter kedua.
-                //
-                // PENDING  -> TIDAK BOLEH MUNCUL
-                // REJECTED -> TIDAK BOLEH MUNCUL
-                // APPROVED -> BOLEH MUNCUL
+                // HANYA APPROVED
                 // =================================================
 
                 const approvedData =
@@ -167,6 +162,17 @@ export default function PrestasiPage() {
                                     item.id
                                 ),
 
+                                // =================================================
+                                // SLUG
+                                // =================================================
+
+                                slug:
+                                    item?.slug
+                                        ? String(
+                                            item.slug
+                                        )
+                                        : null,
+
                                 name:
                                     studentName,
 
@@ -208,8 +214,6 @@ export default function PrestasiPage() {
                                     item?.studentPhotoUrl ??
                                     null,
 
-                                // Karena yang masuk ke sini
-                                // hanya APPROVED
                                 status: "APPROVED",
                             };
                         }
@@ -305,9 +309,7 @@ export default function PrestasiPage() {
     return (
         <main className="min-h-screen bg-[#071A33] text-white">
 
-            {/* =================================================
-                HEADER
-            ================================================= */}
+            {/* HEADER */}
 
             <header className="border-b border-white/10 bg-[#041225]/90 backdrop-blur-xl">
                 <div className="mx-auto flex h-20 max-w-6xl items-center justify-between px-4 sm:px-6">
@@ -342,9 +344,7 @@ export default function PrestasiPage() {
                 </div>
             </header>
 
-            {/* =================================================
-                HERO
-            ================================================= */}
+            {/* HERO */}
 
             <section className="relative overflow-hidden border-b border-white/5">
 
@@ -379,9 +379,7 @@ export default function PrestasiPage() {
                 </div>
             </section>
 
-            {/* =================================================
-                CONTENT
-            ================================================= */}
+            {/* CONTENT */}
 
             <section className="mx-auto max-w-6xl px-4 py-12 sm:px-6 md:py-16">
 
@@ -460,9 +458,7 @@ export default function PrestasiPage() {
 
                 </div>
 
-                {/* =================================================
-                    LOADING
-                ================================================= */}
+                {/* LOADING */}
 
                 {loading && (
                     <div className="flex min-h-[350px] flex-col items-center justify-center">
@@ -479,9 +475,7 @@ export default function PrestasiPage() {
                     </div>
                 )}
 
-                {/* =================================================
-                    ERROR
-                ================================================= */}
+                {/* ERROR */}
 
                 {!loading &&
                     error && (
@@ -515,9 +509,7 @@ export default function PrestasiPage() {
                         </div>
                     )}
 
-                {/* =================================================
-                    CARD PRESTASI
-                ================================================= */}
+                {/* CARD PRESTASI */}
 
                 {!loading &&
                     !error &&
@@ -526,196 +518,219 @@ export default function PrestasiPage() {
                         <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
 
                             {filteredAchievements.map(
-                                (item) => (
-                                    <article
-                                        key={item.id}
-                                        className="group overflow-hidden rounded-3xl border border-white/10 bg-[#0B2342] transition duration-300 hover:-translate-y-1 hover:border-blue-400/30 hover:shadow-2xl hover:shadow-blue-950/30"
-                                    >
+                                (item) => {
 
-                                        {/* FOTO */}
+                                    /*
+                                     * Jika slug tersedia,
+                                     * gunakan slug.
+                                     *
+                                     * ID hanya digunakan
+                                     * sebagai fallback untuk
+                                     * data lama yang belum
+                                     * mempunyai slug.
+                                     */
 
-                                        <div className="relative aspect-[4/3] overflow-hidden bg-[#0A2042]">
+                                    const detailPath =
+                                        item.slug
+                                            ? `/prestasi/${encodeURIComponent(
+                                                item.slug
+                                            )}`
+                                            : `/prestasi/${item.id}`;
 
-                                            {item.proofImageUrl ? (
-                                                item.proofImageUrl
-                                                    .toLowerCase()
-                                                    .endsWith(
-                                                        ".pdf"
-                                                    ) ? (
-                                                    <div className="flex h-full flex-col items-center justify-center">
+                                    return (
+                                        <Link
+                                            key={item.id}
+                                            href={detailPath}
+                                            className="group block"
+                                        >
+                                            <article className="h-full overflow-hidden rounded-3xl border border-white/10 bg-[#0B2342] transition duration-300 hover:-translate-y-1 hover:border-blue-400/30 hover:shadow-2xl hover:shadow-blue-950/30">
 
-                                                        <FileImage
+                                                {/* FOTO */}
+
+                                                <div className="relative aspect-[4/3] overflow-hidden bg-[#0A2042]">
+
+                                                    {item.proofImageUrl ? (
+                                                        item.proofImageUrl
+                                                            .toLowerCase()
+                                                            .endsWith(
+                                                                ".pdf"
+                                                            ) ? (
+                                                            <div className="flex h-full flex-col items-center justify-center">
+
+                                                                <FileImage
+                                                                    size={
+                                                                        42
+                                                                    }
+                                                                    className="text-blue-300"
+                                                                />
+
+                                                                <p className="mt-3 text-xs font-semibold text-slate-400">
+                                                                    Bukti Prestasi
+                                                                    PDF
+                                                                </p>
+
+                                                                <span className="mt-3 rounded-lg bg-blue-600 px-3 py-2 text-xs font-bold text-white transition group-hover:bg-blue-500">
+                                                                    Lihat
+                                                                    Bukti
+                                                                </span>
+
+                                                            </div>
+                                                        ) : (
+                                                            <img
+                                                                src={
+                                                                    item.proofImageUrl
+                                                                }
+                                                                alt={`Bukti prestasi ${item.achievement}`}
+                                                                className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+                                                            />
+                                                        )
+                                                    ) : (
+                                                        <div className="relative flex h-full items-center justify-center">
+
+                                                            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(59,130,246,0.20),transparent_55%)]" />
+
+                                                            <div className="relative flex h-20 w-20 items-center justify-center rounded-3xl border border-white/10 bg-white/5 backdrop-blur-md transition duration-300 group-hover:scale-110">
+
+                                                                <Camera
+                                                                    size={
+                                                                        34
+                                                                    }
+                                                                    className="text-blue-300"
+                                                                />
+
+                                                            </div>
+
+                                                        </div>
+                                                    )}
+
+                                                    {/* CATEGORY */}
+
+                                                    <span className="absolute left-4 top-4 rounded-full border border-white/10 bg-[#041225]/80 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-blue-200 backdrop-blur-md">
+                                                        {
+                                                            item.category
+                                                        }
+                                                    </span>
+
+                                                    {/* LEVEL */}
+
+                                                    <span className="absolute bottom-4 right-4 rounded-full bg-amber-400 px-3 py-1.5 text-[10px] font-black text-slate-950">
+                                                        {
+                                                            item.level
+                                                        }
+                                                    </span>
+
+                                                </div>
+
+                                                {/* CONTENT */}
+
+                                                <div className="p-5">
+
+                                                    {/* DATE */}
+
+                                                    <div className="flex items-center gap-2 text-xs text-slate-500">
+
+                                                        <CalendarDays
                                                             size={
-                                                                42
+                                                                13
                                                             }
-                                                            className="text-blue-300"
                                                         />
 
-                                                        <p className="mt-3 text-xs font-semibold text-slate-400">
-                                                            Bukti Prestasi
-                                                            PDF
+                                                        {
+                                                            item.date
+                                                        }
+
+                                                    </div>
+
+                                                    {/* ACHIEVEMENT */}
+
+                                                    <h2 className="mt-3 text-lg font-black leading-6">
+                                                        {
+                                                            item.achievement
+                                                        }
+                                                    </h2>
+
+                                                    {/* STUDENT */}
+
+                                                    <p className="mt-2 text-sm font-medium text-slate-400">
+                                                        {
+                                                            item.name
+                                                        }
+                                                    </p>
+
+                                                    {/* RANK */}
+
+                                                    {item.rank && (
+                                                        <div className="mt-3 inline-flex rounded-lg border border-amber-400/10 bg-amber-400/5 px-3 py-1.5 text-xs font-bold text-amber-300">
+                                                            {
+                                                                item.rank
+                                                            }
+                                                        </div>
+                                                    )}
+
+                                                    {/* COMPETITION */}
+
+                                                    {item.competitionName && (
+                                                        <p className="mt-3 line-clamp-2 text-xs leading-5 text-slate-500">
+                                                            {
+                                                                item.competitionName
+                                                            }
                                                         </p>
+                                                    )}
 
-                                                        <a
-                                                            href={
-                                                                item.proofImageUrl
-                                                            }
-                                                            target="_blank"
-                                                            rel="noopener noreferrer"
-                                                            className="mt-3 rounded-lg bg-blue-600 px-3 py-2 text-xs font-bold text-white transition hover:bg-blue-500"
-                                                        >
-                                                            Lihat
-                                                            Bukti
-                                                        </a>
+                                                    {/* STATUS */}
 
-                                                    </div>
-                                                ) : (
-                                                    <img
-                                                        src={
-                                                            item.proofImageUrl
-                                                        }
-                                                        alt={`Bukti prestasi ${item.achievement}`}
-                                                        className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
-                                                    />
-                                                )
-                                            ) : (
-                                                <div className="relative flex h-full items-center justify-center">
+                                                    <div className="mt-4">
 
-                                                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(59,130,246,0.20),transparent_55%)]" />
+                                                        <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-400/10 bg-emerald-400/5 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wide text-emerald-300">
+                                                            <CheckCircle2
+                                                                size={
+                                                                    12
+                                                                }
+                                                            />
 
-                                                    <div className="relative flex h-20 w-20 items-center justify-center rounded-3xl border border-white/10 bg-white/5 backdrop-blur-md transition duration-300 group-hover:scale-110">
-
-                                                        <Camera
-                                                            size={
-                                                                34
-                                                            }
-                                                            className="text-blue-300"
-                                                        />
+                                                            Terverifikasi
+                                                        </span>
 
                                                     </div>
 
-                                                </div>
-                                            )}
+                                                    {/* FOOTER */}
 
-                                            {/* CATEGORY */}
+                                                    <div className="mt-5 border-t border-white/10 pt-4">
 
-                                            <span className="absolute left-4 top-4 rounded-full border border-white/10 bg-[#041225]/80 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-blue-200 backdrop-blur-md">
-                                                {item.category}
-                                            </span>
+                                                        <div className="flex items-center justify-between">
 
-                                            {/* LEVEL */}
+                                                            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-600">
+                                                                PAI UIKA
+                                                                BOGOR
+                                                            </span>
 
-                                            <span className="absolute bottom-4 right-4 rounded-full bg-amber-400 px-3 py-1.5 text-[10px] font-black text-slate-950">
-                                                {item.level}
-                                            </span>
+                                                            <span className="flex items-center gap-2 text-xs font-bold text-blue-300 transition group-hover:text-white">
+                                                                Lihat
+                                                                Prestasi
 
-                                        </div>
+                                                                <ArrowRight
+                                                                    size={
+                                                                        14
+                                                                    }
+                                                                />
+                                                            </span>
 
-                                        {/* CONTENT */}
+                                                        </div>
 
-                                        <div className="p-5">
-
-                                            {/* DATE */}
-
-                                            <div className="flex items-center gap-2 text-xs text-slate-500">
-
-                                                <CalendarDays
-                                                    size={13}
-                                                />
-
-                                                {item.date}
-
-                                            </div>
-
-                                            {/* ACHIEVEMENT */}
-
-                                            <h2 className="mt-3 text-lg font-black leading-6">
-                                                {
-                                                    item.achievement
-                                                }
-                                            </h2>
-
-                                            {/* STUDENT */}
-
-                                            <p className="mt-2 text-sm font-medium text-slate-400">
-                                                {item.name}
-                                            </p>
-
-                                            {/* RANK */}
-
-                                            {item.rank && (
-                                                <div className="mt-3 inline-flex rounded-lg border border-amber-400/10 bg-amber-400/5 px-3 py-1.5 text-xs font-bold text-amber-300">
-                                                    {
-                                                        item.rank
-                                                    }
-                                                </div>
-                                            )}
-
-                                            {/* COMPETITION */}
-
-                                            {item.competitionName && (
-                                                <p className="mt-3 line-clamp-2 text-xs leading-5 text-slate-500">
-                                                    {
-                                                        item.competitionName
-                                                    }
-                                                </p>
-                                            )}
-
-                                            {/* STATUS
-                                                HANYA APPROVED
-                                            */}
-
-                                            <div className="mt-4">
-
-                                                <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-400/10 bg-emerald-400/5 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wide text-emerald-300">
-                                                    <CheckCircle2
-                                                        size={
-                                                            12
-                                                        }
-                                                    />
-
-                                                    Terverifikasi
-                                                </span>
-
-                                            </div>
-
-                                            {/* FOOTER */}
-
-                                            <div className="mt-5 border-t border-white/10 pt-4">
-
-                                                <div className="flex items-center justify-between">
-
-                                                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-600">
-                                                        PAI UIKA
-                                                        BOGOR
-                                                    </span>
-
-                                                    <span className="flex items-center gap-2 text-xs font-bold text-blue-300 transition group-hover:text-white">
-                                                        Prestasi
-
-                                                        <ArrowRight
-                                                            size={
-                                                                14
-                                                            }
-                                                        />
-                                                    </span>
+                                                    </div>
 
                                                 </div>
 
-                                            </div>
-
-                                        </div>
-
-                                    </article>
-                                )
+                                            </article>
+                                        </Link>
+                                    );
+                                }
                             )}
 
                         </div>
                     )}
 
-                {/* =================================================
-                    EMPTY
-                ================================================= */}
+                {/* EMPTY */}
 
                 {!loading &&
                     !error &&
@@ -759,9 +774,7 @@ export default function PrestasiPage() {
                         </div>
                     )}
 
-                {/* =================================================
-                    CTA
-                ================================================= */}
+                {/* CTA */}
 
                 <div className="mt-16 overflow-hidden rounded-3xl border border-blue-400/10 bg-gradient-to-r from-blue-600/15 via-blue-600/5 to-transparent p-8 text-center sm:p-10">
 
@@ -798,9 +811,7 @@ export default function PrestasiPage() {
 
             </section>
 
-            {/* =================================================
-                FOOTER
-            ================================================= */}
+            {/* FOOTER */}
 
             <footer className="border-t border-white/10 bg-[#041225]">
 

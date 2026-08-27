@@ -25,7 +25,9 @@ interface PrestasiDetailPageProps {
 // FORMAT TANGGAL
 // =====================================================
 
-function formatDate(value: Date | string | null) {
+function formatDate(
+    value: Date | string | null
+) {
     if (!value) {
         return "-";
     }
@@ -36,18 +38,23 @@ function formatDate(value: Date | string | null) {
         return "-";
     }
 
-    return date.toLocaleDateString("id-ID", {
-        day: "numeric",
-        month: "long",
-        year: "numeric",
-    });
+    return date.toLocaleDateString(
+        "id-ID",
+        {
+            day: "numeric",
+            month: "long",
+            year: "numeric",
+        }
+    );
 }
 
 // =====================================================
-// STATUS
+// STATUS / LEVEL
 // =====================================================
 
-function getLevelLabel(level: string) {
+function getLevelLabel(
+    level: string
+) {
     if (!level) {
         return "-";
     }
@@ -62,26 +69,29 @@ function getLevelLabel(level: string) {
 export default async function PrestasiDetailPage({
     params,
 }: PrestasiDetailPageProps) {
-    const { id } = await params;
+
+    const { id: slug } =
+        await params;
 
     // =================================================
-    // AMBIL DATA PRESTASI
-    // HANYA YANG SUDAH APPROVED
+    // AMBIL DATA BERDASARKAN SLUG
+    // HANYA APPROVED
     // =================================================
 
     const achievement =
         await prisma.achievement.findFirst({
             where: {
-                id,
+                slug,
                 status: "APPROVED",
             },
+
             include: {
                 student: true,
             },
         });
 
     // =================================================
-    // JIKA TIDAK DITEMUKAN
+    // TIDAK DITEMUKAN
     // =================================================
 
     if (!achievement) {
@@ -116,6 +126,7 @@ export default async function PrestasiDetailPage({
                         </div>
 
                         <div>
+
                             <p className="text-sm font-black leading-none">
                                 PAI Segudang Prestasi
                             </p>
@@ -123,6 +134,7 @@ export default async function PrestasiDetailPage({
                             <p className="mt-1 text-[9px] font-semibold uppercase tracking-[0.2em] text-slate-500">
                                 PAI UIKA Bogor
                             </p>
+
                         </div>
 
                     </Link>
@@ -130,11 +142,14 @@ export default async function PrestasiDetailPage({
                     {/* BACK */}
 
                     <Link
-                        href="/"
+                        href="/prestasi"
                         className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-xs font-bold text-slate-300 transition hover:bg-white/10 hover:text-white"
                     >
+
                         <ArrowLeft size={15} />
+
                         Kembali
+
                     </Link>
 
                 </div>
@@ -147,25 +162,24 @@ export default async function PrestasiDetailPage({
 
             <section className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-12 lg:px-8">
 
-                {/* =================================================
-                    BREADCRUMB
-                ================================================= */}
+                {/* BREADCRUMB */}
 
                 <div className="mb-8">
 
                     <Link
-                        href="/"
+                        href="/prestasi"
                         className="inline-flex items-center gap-2 text-xs font-bold text-blue-300 transition hover:text-blue-200"
                     >
+
                         <ArrowLeft size={14} />
-                        Kembali ke halaman utama
+
+                        Kembali ke semua prestasi
+
                     </Link>
 
                 </div>
 
-                {/* =================================================
-                    TITLE
-                ================================================= */}
+                {/* TITLE */}
 
                 <div className="mb-8">
 
@@ -211,9 +225,7 @@ export default async function PrestasiDetailPage({
 
                 <div className="grid gap-6 lg:grid-cols-2">
 
-                    {/* =================================================
-                        FOTO MAHASISWA
-                    ================================================= */}
+                    {/* FOTO MAHASISWA */}
 
                     <div className="overflow-hidden rounded-3xl border border-white/10 bg-[#0A2343]">
 
@@ -279,9 +291,7 @@ export default async function PrestasiDetailPage({
 
                     </div>
 
-                    {/* =================================================
-                        BUKTI PRESTASI
-                    ================================================= */}
+                    {/* BUKTI PRESTASI */}
 
                     <div className="overflow-hidden rounded-3xl border border-white/10 bg-[#0A2343]">
 
@@ -793,27 +803,26 @@ export default async function PrestasiDetailPage({
 
                 </section>
 
-                {/* =================================================
-                    BACK HOME
-                ================================================= */}
+                {/* BACK HOME */}
 
                 <div className="mt-10 flex justify-center">
 
                     <Link
-                        href="/"
+                        href="/prestasi"
                         className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-6 py-3 text-sm font-bold text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-500"
                     >
+
                         <ArrowLeft size={16} />
+
                         Kembali ke Prestasi
+
                     </Link>
 
                 </div>
 
             </section>
 
-            {/* =================================================
-                FOOTER
-            ================================================= */}
+            {/* FOOTER */}
 
             <footer className="mt-16 border-t border-white/10 bg-[#041225]">
 
@@ -821,9 +830,7 @@ export default async function PrestasiDetailPage({
 
                     <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-xl bg-blue-600">
 
-                        <Trophy
-                            size={18}
-                        />
+                        <Trophy size={18} />
 
                     </div>
 
