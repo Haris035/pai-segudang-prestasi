@@ -25,9 +25,7 @@ interface PrestasiDetailPageProps {
 // FORMAT TANGGAL
 // =====================================================
 
-function formatDate(
-    value: Date | string | null
-) {
+function formatDate(value: Date | string | null) {
     if (!value) {
         return "-";
     }
@@ -38,28 +36,11 @@ function formatDate(
         return "-";
     }
 
-    return date.toLocaleDateString(
-        "id-ID",
-        {
-            day: "numeric",
-            month: "long",
-            year: "numeric",
-        }
-    );
-}
-
-// =====================================================
-// STATUS / LEVEL
-// =====================================================
-
-function getLevelLabel(
-    level: string
-) {
-    if (!level) {
-        return "-";
-    }
-
-    return level;
+    return date.toLocaleDateString("id-ID", {
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+    });
 }
 
 // =====================================================
@@ -69,29 +50,46 @@ function getLevelLabel(
 export default async function PrestasiDetailPage({
     params,
 }: PrestasiDetailPageProps) {
+    const { id } = await params;
 
-    const { id: slug } =
-        await params;
+    const decodedId = decodeURIComponent(id);
 
     // =================================================
-    // AMBIL DATA BERDASARKAN SLUG
-    // HANYA APPROVED
+    // CARI BERDASARKAN SLUG TERLEBIH DAHULU
+    // FALLBACK KE ID
     // =================================================
 
-    const achievement =
+    let achievement =
         await prisma.achievement.findFirst({
             where: {
-                slug,
+                slug: decodedId,
                 status: "APPROVED",
             },
-
             include: {
                 student: true,
             },
         });
 
     // =================================================
-    // TIDAK DITEMUKAN
+    // FALLBACK:
+    // JIKA BUKAN SLUG, COBA CARI BERDASARKAN ID
+    // =================================================
+
+    if (!achievement) {
+        achievement =
+            await prisma.achievement.findFirst({
+                where: {
+                    id: decodedId,
+                    status: "APPROVED",
+                },
+                include: {
+                    student: true,
+                },
+            });
+    }
+
+    // =================================================
+    // JIKA TIDAK DITEMUKAN
     // =================================================
 
     if (!achievement) {
@@ -106,27 +104,20 @@ export default async function PrestasiDetailPage({
             ================================================= */}
 
             <header className="sticky top-0 z-40 border-b border-white/10 bg-[#041225]/95 backdrop-blur-xl">
-
                 <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
-
-                    {/* LOGO */}
 
                     <Link
                         href="/"
                         className="flex items-center gap-3"
                     >
-
                         <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-600 shadow-lg shadow-blue-600/20">
-
                             <Trophy
                                 size={20}
                                 className="text-white"
                             />
-
                         </div>
 
                         <div>
-
                             <p className="text-sm font-black leading-none">
                                 PAI Segudang Prestasi
                             </p>
@@ -134,26 +125,17 @@ export default async function PrestasiDetailPage({
                             <p className="mt-1 text-[9px] font-semibold uppercase tracking-[0.2em] text-slate-500">
                                 PAI UIKA Bogor
                             </p>
-
                         </div>
-
                     </Link>
-
-                    {/* BACK */}
 
                     <Link
                         href="/prestasi"
                         className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-xs font-bold text-slate-300 transition hover:bg-white/10 hover:text-white"
                     >
-
                         <ArrowLeft size={15} />
-
                         Kembali
-
                     </Link>
-
                 </div>
-
             </header>
 
             {/* =================================================
@@ -165,18 +147,13 @@ export default async function PrestasiDetailPage({
                 {/* BREADCRUMB */}
 
                 <div className="mb-8">
-
                     <Link
                         href="/prestasi"
                         className="inline-flex items-center gap-2 text-xs font-bold text-blue-300 transition hover:text-blue-200"
                     >
-
                         <ArrowLeft size={14} />
-
                         Kembali ke semua prestasi
-
                     </Link>
-
                 </div>
 
                 {/* TITLE */}
@@ -186,35 +163,25 @@ export default async function PrestasiDetailPage({
                     <div className="mb-4 flex flex-wrap items-center gap-3">
 
                         <span className="inline-flex items-center gap-2 rounded-full border border-blue-400/20 bg-blue-500/10 px-3 py-1.5 text-xs font-bold text-blue-300">
-
                             <Award size={14} />
-
                             {achievement.category}
-
                         </span>
 
                         <span className="inline-flex items-center gap-2 rounded-full border border-emerald-400/20 bg-emerald-500/10 px-3 py-1.5 text-xs font-bold text-emerald-300">
-
                             <Trophy size={14} />
-
                             Terverifikasi
-
                         </span>
 
                     </div>
 
                     <h1 className="max-w-4xl text-3xl font-black leading-tight tracking-tight sm:text-4xl lg:text-5xl">
-
                         {achievement.achievementName}
-
                     </h1>
 
                     <p className="mt-4 max-w-3xl text-sm leading-7 text-slate-400 sm:text-base">
-
                         Dokumentasi prestasi mahasiswa
                         Program Studi Pendidikan Agama Islam
                         Universitas Ibn Khaldun Bogor.
-
                     </p>
 
                 </div>
@@ -232,16 +199,13 @@ export default async function PrestasiDetailPage({
                         <div className="flex items-center gap-3 border-b border-white/10 px-5 py-4">
 
                             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-600/15">
-
                                 <UserRound
                                     size={18}
                                     className="text-blue-300"
                                 />
-
                             </div>
 
                             <div>
-
                                 <h2 className="text-sm font-black">
                                     Foto Mahasiswa
                                 </h2>
@@ -249,7 +213,6 @@ export default async function PrestasiDetailPage({
                                 <p className="mt-0.5 text-[11px] text-slate-500">
                                     Dokumentasi mahasiswa
                                 </p>
-
                             </div>
 
                         </div>
@@ -257,26 +220,19 @@ export default async function PrestasiDetailPage({
                         <div className="flex min-h-[380px] items-center justify-center bg-[#06182E] p-5 sm:min-h-[450px]">
 
                             {achievement.studentPhotoUrl ? (
-
                                 <img
-                                    src={
-                                        achievement.studentPhotoUrl
-                                    }
+                                    src={achievement.studentPhotoUrl}
                                     alt={`Foto ${achievement.student.name}`}
                                     className="max-h-[500px] w-full rounded-2xl object-contain"
                                 />
-
                             ) : (
-
                                 <div className="flex flex-col items-center justify-center text-center">
 
                                     <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-white/5">
-
                                         <UserRound
                                             size={35}
                                             className="text-slate-600"
                                         />
-
                                     </div>
 
                                     <p className="mt-4 text-sm font-bold text-slate-500">
@@ -284,7 +240,6 @@ export default async function PrestasiDetailPage({
                                     </p>
 
                                 </div>
-
                             )}
 
                         </div>
@@ -298,16 +253,13 @@ export default async function PrestasiDetailPage({
                         <div className="flex items-center gap-3 border-b border-white/10 px-5 py-4">
 
                             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-600/15">
-
                                 <Award
                                     size={18}
                                     className="text-blue-300"
                                 />
-
                             </div>
 
                             <div>
-
                                 <h2 className="text-sm font-black">
                                     Bukti Prestasi
                                 </h2>
@@ -315,7 +267,6 @@ export default async function PrestasiDetailPage({
                                 <p className="mt-0.5 text-[11px] text-slate-500">
                                     Dokumen yang telah diverifikasi
                                 </p>
-
                             </div>
 
                         </div>
@@ -323,26 +274,19 @@ export default async function PrestasiDetailPage({
                         <div className="flex min-h-[380px] items-center justify-center bg-[#06182E] p-5 sm:min-h-[450px]">
 
                             {achievement.proofImageUrl ? (
-
                                 <img
-                                    src={
-                                        achievement.proofImageUrl
-                                    }
+                                    src={achievement.proofImageUrl}
                                     alt={`Bukti prestasi ${achievement.achievementName}`}
                                     className="max-h-[500px] w-full rounded-2xl object-contain"
                                 />
-
                             ) : (
-
                                 <div className="flex flex-col items-center justify-center text-center">
 
                                     <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-white/5">
-
                                         <Award
                                             size={35}
                                             className="text-slate-600"
                                         />
-
                                     </div>
 
                                     <p className="mt-4 text-sm font-bold text-slate-500">
@@ -350,7 +294,6 @@ export default async function PrestasiDetailPage({
                                     </p>
 
                                 </div>
-
                             )}
 
                         </div>
@@ -368,16 +311,13 @@ export default async function PrestasiDetailPage({
                     <div className="mb-5 flex items-center gap-3">
 
                         <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-600/15">
-
                             <GraduationCap
                                 size={20}
                                 className="text-blue-300"
                             />
-
                         </div>
 
                         <div>
-
                             <p className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-300">
                                 Data Mahasiswa
                             </p>
@@ -385,7 +325,6 @@ export default async function PrestasiDetailPage({
                             <h2 className="mt-1 text-xl font-black">
                                 Informasi Mahasiswa
                             </h2>
-
                         </div>
 
                     </div>
@@ -397,7 +336,6 @@ export default async function PrestasiDetailPage({
                         <div className="rounded-2xl border border-white/10 bg-[#0A2343] p-5">
 
                             <div className="flex items-center gap-3">
-
                                 <UserRound
                                     size={17}
                                     className="text-blue-300"
@@ -406,7 +344,6 @@ export default async function PrestasiDetailPage({
                                 <p className="text-xs font-bold text-slate-500">
                                     Nama Mahasiswa
                                 </p>
-
                             </div>
 
                             <p className="mt-3 text-sm font-black leading-6">
@@ -420,7 +357,6 @@ export default async function PrestasiDetailPage({
                         <div className="rounded-2xl border border-white/10 bg-[#0A2343] p-5">
 
                             <div className="flex items-center gap-3">
-
                                 <School
                                     size={17}
                                     className="text-blue-300"
@@ -429,7 +365,6 @@ export default async function PrestasiDetailPage({
                                 <p className="text-xs font-bold text-slate-500">
                                     NIM
                                 </p>
-
                             </div>
 
                             <p className="mt-3 text-sm font-black leading-6">
@@ -443,7 +378,6 @@ export default async function PrestasiDetailPage({
                         <div className="rounded-2xl border border-white/10 bg-[#0A2343] p-5">
 
                             <div className="flex items-center gap-3">
-
                                 <GraduationCap
                                     size={17}
                                     className="text-blue-300"
@@ -452,12 +386,10 @@ export default async function PrestasiDetailPage({
                                 <p className="text-xs font-bold text-slate-500">
                                     Semester
                                 </p>
-
                             </div>
 
                             <p className="mt-3 text-sm font-black leading-6">
-                                {achievement.student.semester ||
-                                    "-"}
+                                {achievement.student.semester || "-"}
                             </p>
 
                         </div>
@@ -467,7 +399,6 @@ export default async function PrestasiDetailPage({
                         <div className="rounded-2xl border border-white/10 bg-[#0A2343] p-5">
 
                             <div className="flex items-center gap-3">
-
                                 <Users
                                     size={17}
                                     className="text-blue-300"
@@ -476,12 +407,10 @@ export default async function PrestasiDetailPage({
                                 <p className="text-xs font-bold text-slate-500">
                                     Kelas
                                 </p>
-
                             </div>
 
                             <p className="mt-3 text-sm font-black leading-6">
-                                {achievement.student.className ||
-                                    "-"}
+                                {achievement.student.className || "-"}
                             </p>
 
                         </div>
@@ -524,16 +453,13 @@ export default async function PrestasiDetailPage({
                     <div className="mb-5 flex items-center gap-3">
 
                         <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-600/15">
-
                             <Trophy
                                 size={20}
                                 className="text-blue-300"
                             />
-
                         </div>
 
                         <div>
-
                             <p className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-300">
                                 Detail Prestasi
                             </p>
@@ -541,7 +467,6 @@ export default async function PrestasiDetailPage({
                             <h2 className="mt-1 text-xl font-black">
                                 Informasi Pencapaian
                             </h2>
-
                         </div>
 
                     </div>
@@ -553,7 +478,6 @@ export default async function PrestasiDetailPage({
                         <div className="rounded-2xl border border-white/10 bg-[#0A2343] p-5">
 
                             <div className="flex items-center gap-3">
-
                                 <Trophy
                                     size={17}
                                     className="text-blue-300"
@@ -562,7 +486,6 @@ export default async function PrestasiDetailPage({
                                 <p className="text-xs font-bold text-slate-500">
                                     Nama Prestasi
                                 </p>
-
                             </div>
 
                             <p className="mt-3 text-sm font-black leading-6">
@@ -576,7 +499,6 @@ export default async function PrestasiDetailPage({
                         <div className="rounded-2xl border border-white/10 bg-[#0A2343] p-5">
 
                             <div className="flex items-center gap-3">
-
                                 <Award
                                     size={17}
                                     className="text-blue-300"
@@ -585,7 +507,6 @@ export default async function PrestasiDetailPage({
                                 <p className="text-xs font-bold text-slate-500">
                                     Kategori
                                 </p>
-
                             </div>
 
                             <p className="mt-3 text-sm font-black">
@@ -599,7 +520,6 @@ export default async function PrestasiDetailPage({
                         <div className="rounded-2xl border border-white/10 bg-[#0A2343] p-5">
 
                             <div className="flex items-center gap-3">
-
                                 <Medal
                                     size={17}
                                     className="text-blue-300"
@@ -608,13 +528,10 @@ export default async function PrestasiDetailPage({
                                 <p className="text-xs font-bold text-slate-500">
                                     Tingkat
                                 </p>
-
                             </div>
 
                             <p className="mt-3 text-sm font-black">
-                                {getLevelLabel(
-                                    achievement.level
-                                )}
+                                {achievement.level}
                             </p>
 
                         </div>
@@ -624,7 +541,6 @@ export default async function PrestasiDetailPage({
                         <div className="rounded-2xl border border-white/10 bg-[#0A2343] p-5">
 
                             <div className="flex items-center gap-3">
-
                                 <Medal
                                     size={17}
                                     className="text-blue-300"
@@ -633,12 +549,10 @@ export default async function PrestasiDetailPage({
                                 <p className="text-xs font-bold text-slate-500">
                                     Peringkat
                                 </p>
-
                             </div>
 
                             <p className="mt-3 text-sm font-black">
-                                {achievement.rank ||
-                                    "-"}
+                                {achievement.rank || "-"}
                             </p>
 
                         </div>
@@ -648,7 +562,6 @@ export default async function PrestasiDetailPage({
                         <div className="rounded-2xl border border-white/10 bg-[#0A2343] p-5">
 
                             <div className="flex items-center gap-3">
-
                                 <Trophy
                                     size={17}
                                     className="text-blue-300"
@@ -657,12 +570,10 @@ export default async function PrestasiDetailPage({
                                 <p className="text-xs font-bold text-slate-500">
                                     Nama Kompetisi
                                 </p>
-
                             </div>
 
                             <p className="mt-3 text-sm font-black leading-6">
-                                {achievement.competitionName ||
-                                    "-"}
+                                {achievement.competitionName || "-"}
                             </p>
 
                         </div>
@@ -672,7 +583,6 @@ export default async function PrestasiDetailPage({
                         <div className="rounded-2xl border border-white/10 bg-[#0A2343] p-5">
 
                             <div className="flex items-center gap-3">
-
                                 <School
                                     size={17}
                                     className="text-blue-300"
@@ -681,12 +591,10 @@ export default async function PrestasiDetailPage({
                                 <p className="text-xs font-bold text-slate-500">
                                     Penyelenggara
                                 </p>
-
                             </div>
 
                             <p className="mt-3 text-sm font-black leading-6">
-                                {achievement.organizer ||
-                                    "-"}
+                                {achievement.organizer || "-"}
                             </p>
 
                         </div>
@@ -696,7 +604,6 @@ export default async function PrestasiDetailPage({
                         <div className="rounded-2xl border border-white/10 bg-[#0A2343] p-5 sm:col-span-2 lg:col-span-3">
 
                             <div className="flex items-center gap-3">
-
                                 <CalendarDays
                                     size={17}
                                     className="text-blue-300"
@@ -705,7 +612,6 @@ export default async function PrestasiDetailPage({
                                 <p className="text-xs font-bold text-slate-500">
                                     Tanggal Prestasi
                                 </p>
-
                             </div>
 
                             <p className="mt-3 text-sm font-black">
@@ -732,16 +638,13 @@ export default async function PrestasiDetailPage({
                             <div className="flex items-center gap-3">
 
                                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-600/15">
-
                                     <Award
                                         size={20}
                                         className="text-blue-300"
                                     />
-
                                 </div>
 
                                 <div>
-
                                     <p className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-300">
                                         Tentang Pencapaian
                                     </p>
@@ -749,7 +652,6 @@ export default async function PrestasiDetailPage({
                                     <h2 className="mt-1 text-xl font-black">
                                         Deskripsi Prestasi
                                     </h2>
-
                                 </div>
 
                             </div>
@@ -774,12 +676,10 @@ export default async function PrestasiDetailPage({
                         <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
 
                             <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-emerald-500/10">
-
                                 <Trophy
                                     size={27}
                                     className="text-emerald-300"
                                 />
-
                             </div>
 
                             <div>
@@ -803,7 +703,7 @@ export default async function PrestasiDetailPage({
 
                 </section>
 
-                {/* BACK HOME */}
+                {/* BACK */}
 
                 <div className="mt-10 flex justify-center">
 
@@ -811,27 +711,24 @@ export default async function PrestasiDetailPage({
                         href="/prestasi"
                         className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-6 py-3 text-sm font-bold text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-500"
                     >
-
                         <ArrowLeft size={16} />
-
                         Kembali ke Prestasi
-
                     </Link>
 
                 </div>
 
             </section>
 
-            {/* FOOTER */}
+            {/* =================================================
+                FOOTER
+            ================================================= */}
 
             <footer className="mt-16 border-t border-white/10 bg-[#041225]">
 
                 <div className="mx-auto max-w-7xl px-4 py-8 text-center sm:px-6 lg:px-8">
 
                     <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-xl bg-blue-600">
-
                         <Trophy size={18} />
-
                     </div>
 
                     <p className="mt-3 text-sm font-black">
