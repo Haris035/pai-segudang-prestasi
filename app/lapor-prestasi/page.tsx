@@ -1,11 +1,6 @@
 "use client";
 
-import {
-    ChangeEvent,
-    FormEvent,
-    useEffect,
-    useState,
-} from "react";
+import { ChangeEvent, FormEvent, useEffect, useState } from "react";
 import Link from "next/link";
 import { upload } from "@vercel/blob/client";
 import {
@@ -19,10 +14,6 @@ import {
     Upload,
     X,
 } from "lucide-react";
-
-// =====================================================
-// OPTIONS
-// =====================================================
 
 const categories = [
     "Akademik",
@@ -46,15 +37,116 @@ const levels = [
     "Lainnya",
 ];
 
+const MAX_FILE_SIZE = 5 * 1024 * 1024;
+
+// =====================================================
+// KOMPRESI GAMBAR
+// =====================================================
+
+async function compressImage(file: File): Promise<File> {
+    const MAX_WIDTH = 2000;
+    const MAX_HEIGHT = 2000;
+    const QUALITY = 0.82;
+
+    if (
+        file.type === "image/jpeg" &&
+        file.size <= 1.5 * 1024 * 1024
+    ) {
+        return file;
+    }
+
+    return new Promise((resolve, reject) => {
+        const image = new Image();
+        const objectUrl = URL.createObjectURL(file);
+
+        image.onload = () => {
+            URL.revokeObjectURL(objectUrl);
+
+            let width = image.naturalWidth;
+            let height = image.naturalHeight;
+
+            const scale = Math.min(
+                1,
+                MAX_WIDTH / width,
+                MAX_HEIGHT / height,
+            );
+
+            width = Math.round(width * scale);
+            height = Math.round(height * scale);
+
+            const canvas = document.createElement("canvas");
+
+            canvas.width = width;
+            canvas.height = height;
+
+            const context = canvas.getContext("2d");
+
+            if (!context) {
+                reject(
+                    new Error(
+                        "Browser tidak mendukung pemrosesan gambar.",
+                    ),
+                );
+                return;
+            }
+
+            context.fillStyle = "#ffffff";
+            context.fillRect(0, 0, width, height);
+
+            context.drawImage(
+                image,
+                0,
+                0,
+                width,
+                height,
+            );
+
+            canvas.toBlob(
+                (blob) => {
+                    if (!blob) {
+                        reject(
+                            new Error(
+                                "Gagal mengompres gambar.",
+                            ),
+                        );
+                        return;
+                    }
+
+                    const compressedFile = new File(
+                        [blob],
+                        `${crypto.randomUUID()}.jpg`,
+                        {
+                            type: "image/jpeg",
+                            lastModified: Date.now(),
+                        },
+                    );
+
+                    resolve(compressedFile);
+                },
+                "image/jpeg",
+                QUALITY,
+            );
+        };
+
+        image.onerror = () => {
+            URL.revokeObjectURL(objectUrl);
+
+            reject(
+                new Error(
+                    "Gagal membaca gambar.",
+                ),
+            );
+        };
+
+        image.src = objectUrl;
+    });
+}
+
 // =====================================================
 // PAGE
 // =====================================================
 
 export default function LaporPrestasiPage() {
-    // ===================================================
-    // FILE STATE
-    // ===================================================
-
     const [proofFile, setProofFile] =
         useState<File | null>(null);
 
@@ -67,25 +159,17 @@ export default function LaporPrestasiPage() {
     const [studentPhotoPreview, setStudentPhotoPreview] =
         useState<string | null>(null);
 
-    // ===================================================
-    // SUBMIT STATE
-    // ===================================================
+    const [isSubmitting, setIsSubmitting] =
+        useState(false);
 
     const [submitted, setSubmitted] =
         useState(false);
 
-    const [isSubmitting, setIsSubmitting] =
-        useState(false);
-
-    const [uploadProgress, setUploadProgress] =
-        useState(0);
-
     const [errorMessage, setErrorMessage] =
         useState("");
 
-    // ===================================================
-    // CLEANUP PREVIEW
-    // ===================================================
+    const [uploadProgress, setUploadProgress] =
+        useState(0);
 
     useEffect(() => {
         return () => {
@@ -99,20 +183,16 @@ export default function LaporPrestasiPage() {
                 );
             }
         };
-    }, [
-        proofPreview,
-        studentPhotoPreview,
-    ]);
+    }, [proofPreview, studentPhotoPreview]);
 
-    // ===================================================
-    // PROOF FILE
-    // ===================================================
+    // =====================================================
+    // FILE BUKTI
+    // =====================================================
 
     const handleProofChange = (
         event: ChangeEvent<HTMLInputElement>,
     ) => {
-        const file =
-            event.target.files?.[0];
+        const file = event.target.files?.[0];
 
         if (!file) {
             return;
@@ -131,7 +211,7 @@ export default function LaporPrestasiPage() {
             return;
         }
 
-        if (file.size > 5 * 1024 * 1024) {
+        if (file.size > MAX_FILE_SIZE) {
             setErrorMessage(
                 "Ukuran bukti prestasi maksimal 5 MB.",
             );
@@ -141,27 +221,21 @@ export default function LaporPrestasiPage() {
         }
 
         if (proofPreview) {
-            URL.revokeObjectURL(
-                proofPreview,
-            );
+            URL.revokeObjectURL(proofPreview);
         }
 
-        const preview =
-            URL.createObjectURL(file);
-
         setProofFile(file);
-        setProofPreview(preview);
+        setProofPreview(URL.createObjectURL(file));
     };
 
-    // ===================================================
-    // STUDENT PHOTO
-    // ===================================================
+    // =====================================================
+    // FOTO MAHASISWA
+    // =====================================================
 
     const handleStudentPhotoChange = (
         event: ChangeEvent<HTMLInputElement>,
     ) => {
-        const file =
-            event.target.files?.[0];
+        const file = event.target.files?.[0];
 
         if (!file) {
             return;
@@ -180,7 +254,7 @@ export default function LaporPrestasiPage() {
             return;
         }
 
-        if (file.size > 5 * 1024 * 1024) {
+        if (file.size > MAX_FILE_SIZE) {
             setErrorMessage(
                 "Ukuran foto mahasiswa maksimal 5 MB.",
             );
@@ -195,22 +269,19 @@ export default function LaporPrestasiPage() {
             );
         }
 
-        const preview =
-            URL.createObjectURL(file);
-
         setStudentPhoto(file);
-        setStudentPhotoPreview(preview);
+        setStudentPhotoPreview(
+            URL.createObjectURL(file),
+        );
     };
 
-    // ===================================================
-    // REMOVE PROOF
-    // ===================================================
+    // =====================================================
+    // HAPUS BUKTI
+    // =====================================================
 
     const removeProof = () => {
         if (proofPreview) {
-            URL.revokeObjectURL(
-                proofPreview,
-            );
+            URL.revokeObjectURL(proofPreview);
         }
 
         setProofFile(null);
@@ -226,9 +297,9 @@ export default function LaporPrestasiPage() {
         }
     };
 
-    // ===================================================
-    // REMOVE STUDENT PHOTO
-    // ===================================================
+    // =====================================================
+    // HAPUS FOTO
+    // =====================================================
 
     const removeStudentPhoto = () => {
         if (studentPhotoPreview) {
@@ -250,9 +321,9 @@ export default function LaporPrestasiPage() {
         }
     };
 
-    // ===================================================
+    // =====================================================
     // SUBMIT
-    // ===================================================
+    // =====================================================
 
     const handleSubmit = async (
         event: FormEvent<HTMLFormElement>,
@@ -276,107 +347,253 @@ export default function LaporPrestasiPage() {
             return;
         }
 
-        if (proofFile.size > 5 * 1024 * 1024) {
+        if (proofFile.size > MAX_FILE_SIZE) {
             setErrorMessage(
                 "Ukuran bukti prestasi maksimal 5 MB.",
             );
+
             return;
         }
 
-        if (studentPhoto && studentPhoto.size > 5 * 1024 * 1024) {
+        if (
+            studentPhoto &&
+            studentPhoto.size > MAX_FILE_SIZE
+        ) {
             setErrorMessage(
                 "Ukuran foto mahasiswa maksimal 5 MB.",
             );
+
             return;
         }
 
         try {
             setIsSubmitting(true);
-            setUploadProgress(5);
+            setUploadProgress(3);
 
             const form = event.currentTarget;
             const formData = new FormData(form);
 
-            // Upload bukti langsung ke Vercel Blob.
-            const proofBlob = await upload(
-                `achievements/${crypto.randomUUID()}-${proofFile.name}`,
-                proofFile,
+            // =================================================
+            // KOMPRESI KEDUA FOTO BERSAMAAN
+            // =================================================
+
+            setUploadProgress(5);
+
+            const [
+                compressedProof,
+                compressedStudentPhoto,
+            ] = await Promise.all([
+                compressImage(proofFile),
+                studentPhoto
+                    ? compressImage(studentPhoto)
+                    : Promise.resolve(null),
+            ]);
+
+            setUploadProgress(10);
+
+            // =================================================
+            // PROGRESS UPLOAD
+            // =================================================
+
+            let proofProgress = 0;
+            let studentProgress = studentPhoto
+                ? 0
+                : 100;
+
+            const updateProgress = () => {
+                const combined =
+                    proofProgress * 0.5 +
+                    studentProgress * 0.25;
+
+                const progress = Math.round(
+                    10 + combined,
+                );
+
+                setUploadProgress(
+                    Math.min(85, progress),
+                );
+            };
+
+            // =================================================
+            // UPLOAD BUKTI
+            // =================================================
+
+            const proofUpload = upload(
+                `achievements/${crypto.randomUUID()}.jpg`,
+                compressedProof,
                 {
                     access: "public",
                     handleUploadUrl: "/api/upload",
-                    onUploadProgress: ({ percentage }) => {
-                        const safePercentage = Math.min(
-                            100,
-                            Math.max(0, percentage),
-                        );
 
-                        // Bukti: 5% - 55%
-                        setUploadProgress(
-                            Math.round(5 + safePercentage * 0.5),
-                        );
+                    onUploadProgress: ({
+                        percentage,
+                    }) => {
+                        proofProgress =
+                            Math.max(
+                                0,
+                                Math.min(
+                                    100,
+                                    percentage,
+                                ),
+                            );
+
+                        updateProgress();
                     },
                 },
             );
 
-            setUploadProgress(55);
+            // =================================================
+            // UPLOAD FOTO MAHASISWA
+            // =================================================
 
-            // Upload foto mahasiswa langsung ke Vercel Blob.
-            let studentPhotoUrl: string | null = null;
+            const studentUpload =
+                compressedStudentPhoto
+                    ? upload(
+                        `achievements/${crypto.randomUUID()}.jpg`,
+                        compressedStudentPhoto,
+                        {
+                            access: "public",
+                            handleUploadUrl:
+                                "/api/upload",
 
-            if (studentPhoto) {
-                const studentBlob = await upload(
-                    `achievements/${crypto.randomUUID()}-${studentPhoto.name}`,
-                    studentPhoto,
-                    {
-                        access: "public",
-                        handleUploadUrl: "/api/upload",
-                        onUploadProgress: ({ percentage }) => {
-                            const safePercentage = Math.min(
-                                100,
-                                Math.max(0, percentage),
-                            );
+                            onUploadProgress: ({
+                                percentage,
+                            }) => {
+                                studentProgress =
+                                    Math.max(
+                                        0,
+                                        Math.min(
+                                            100,
+                                            percentage,
+                                        ),
+                                    );
 
-                            // Foto: 55% - 80%
-                            setUploadProgress(
-                                Math.round(55 + safePercentage * 0.25),
-                            );
+                                updateProgress();
+                            },
                         },
-                    },
-                );
+                    )
+                    : Promise.resolve(null);
 
-                studentPhotoUrl = studentBlob.url;
-            }
+            // =================================================
+            // KEDUA UPLOAD BERJALAN BERSAMAAN
+            // =================================================
 
-            setUploadProgress(80);
-
-            // Kirim data teks + URL Blob ke API achievement.
-            const payload = {
-                studentName: String(formData.get("studentName") || "").trim(),
-                nim: String(formData.get("nim") || "").trim(),
-                semester: String(formData.get("semester") || "").trim(),
-                className: String(formData.get("className") || "").trim(),
-                phone: String(formData.get("phone") || "").trim(),
-                achievementName: String(formData.get("achievementName") || "").trim(),
-                category: String(formData.get("category") || "").trim(),
-                level: String(formData.get("level") || "").trim(),
-                rank: String(formData.get("rank") || "").trim(),
-                competitionName: String(formData.get("competitionName") || "").trim(),
-                organizer: String(formData.get("organizer") || "").trim(),
-                achievementDate: String(formData.get("achievementDate") || "").trim(),
-                description: String(formData.get("description") || "").trim(),
-                proofImageUrl: proofBlob.url,
-                studentPhotoUrl,
-            };
+            const [
+                proofBlob,
+                studentBlob,
+            ] = await Promise.all([
+                proofUpload,
+                studentUpload,
+            ]);
 
             setUploadProgress(85);
 
-            const response = await fetch("/api/achievements", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
+            // =================================================
+            // URL BLOB
+            // =================================================
+
+            const proofImageUrl =
+                proofBlob.url;
+
+            const studentPhotoUrl =
+                studentBlob?.url ?? null;
+
+            // =================================================
+            // DATA DARI FORM
+            // =================================================
+
+            const payload = {
+                studentName: String(
+                    formData.get("studentName") ||
+                    "",
+                ).trim(),
+
+                nim: String(
+                    formData.get("nim") || "",
+                ).trim(),
+
+                semester: String(
+                    formData.get("semester") ||
+                    "",
+                ).trim(),
+
+                className: String(
+                    formData.get("className") ||
+                    "",
+                ).trim(),
+
+                phone: String(
+                    formData.get("phone") || "",
+                ).trim(),
+
+                achievementName: String(
+                    formData.get(
+                        "achievementName",
+                    ) || "",
+                ).trim(),
+
+                category: String(
+                    formData.get("category") ||
+                    "",
+                ).trim(),
+
+                level: String(
+                    formData.get("level") ||
+                    "",
+                ).trim(),
+
+                rank: String(
+                    formData.get("rank") || "",
+                ).trim(),
+
+                competitionName: String(
+                    formData.get(
+                        "competitionName",
+                    ) || "",
+                ).trim(),
+
+                organizer: String(
+                    formData.get(
+                        "organizer",
+                    ) || "",
+                ).trim(),
+
+                achievementDate: String(
+                    formData.get(
+                        "achievementDate",
+                    ) || "",
+                ).trim(),
+
+                description: String(
+                    formData.get(
+                        "description",
+                    ) || "",
+                ).trim(),
+
+                proofImageUrl,
+
+                studentPhotoUrl,
+            };
+
+            // =================================================
+            // SIMPAN DATA KE POSTGRESQL
+            // =================================================
+
+            setUploadProgress(90);
+
+            const response = await fetch(
+                "/api/achievements",
+                {
+                    method: "POST",
+
+                    headers: {
+                        "Content-Type":
+                            "application/json",
+                    },
+
+                    body: JSON.stringify(payload),
                 },
-                body: JSON.stringify(payload),
-            });
+            );
 
             let result: {
                 success?: boolean;
@@ -391,9 +608,14 @@ export default function LaporPrestasiPage() {
 
             if (!response.ok) {
                 throw new Error(
-                    result?.message || "Gagal menyimpan prestasi.",
+                    result?.message ||
+                    "Gagal menyimpan prestasi.",
                 );
             }
+
+            // =================================================
+            // BERHASIL
+            // =================================================
 
             setUploadProgress(100);
             setSubmitted(true);
@@ -402,46 +624,40 @@ export default function LaporPrestasiPage() {
             form.reset();
 
             if (proofPreview) {
-                URL.revokeObjectURL(proofPreview);
+                URL.revokeObjectURL(
+                    proofPreview,
+                );
             }
 
             if (studentPhotoPreview) {
-                URL.revokeObjectURL(studentPhotoPreview);
+                URL.revokeObjectURL(
+                    studentPhotoPreview,
+                );
             }
 
             setProofFile(null);
             setProofPreview(null);
+
             setStudentPhoto(null);
             setStudentPhotoPreview(null);
-
-            const proofInput = document.getElementById(
-                "proof",
-            ) as HTMLInputElement | null;
-
-            if (proofInput) {
-                proofInput.value = "";
-            }
-
-            const studentPhotoInput = document.getElementById(
-                "studentPhoto",
-            ) as HTMLInputElement | null;
-
-            if (studentPhotoInput) {
-                studentPhotoInput.value = "";
-            }
 
             window.scrollTo({
                 top: 0,
                 behavior: "smooth",
             });
         } catch (error) {
-            console.error("SUBMIT PRESTASI ERROR:", error);
+            console.error(
+                "SUBMIT PRESTASI ERROR:",
+                error,
+            );
 
             setErrorMessage(
                 error instanceof Error
                     ? error.message
                     : "Terjadi kesalahan saat mengirim prestasi.",
             );
+
+            setUploadProgress(0);
 
             window.scrollTo({
                 top: 0,
@@ -452,96 +668,63 @@ export default function LaporPrestasiPage() {
         }
     };
 
-    // ===================================================
-    // RETURN
-    // ===================================================
-
     return (
         <main className="min-h-screen bg-[#071A33] text-white">
 
-            {/* =================================================
-          HEADER
-      ================================================= */}
+            {/* HEADER */}
 
-            <header className="border-b border-white/10 bg-[#041225]/80 backdrop-blur-xl">
-
-                <div className="container-main flex h-20 items-center justify-between">
-
-                    {/* LOGO */}
+            <header className="border-b border-white/10 bg-[#041225]/90 backdrop-blur-xl">
+                <div className="mx-auto flex h-20 max-w-6xl items-center justify-between px-5">
 
                     <Link
                         href="/"
                         className="flex items-center gap-3"
                     >
-
-                        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-600 shadow-lg shadow-blue-600/20">
-
-                            <Trophy size={18} />
-
+                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-600">
+                            <Trophy size={19} />
                         </div>
 
                         <div>
-
-                            <p className="font-bold text-white">
+                            <p className="font-bold">
                                 PAI
                             </p>
 
                             <p className="text-[9px] uppercase tracking-[0.18em] text-blue-300">
                                 Segudang Prestasi
                             </p>
-
                         </div>
-
                     </Link>
-
-                    {/* BACK */}
 
                     <Link
                         href="/prestasi"
-                        className="flex items-center gap-2 text-xs font-semibold text-slate-400 transition hover:text-white"
+                        className="flex items-center gap-2 text-sm font-semibold text-slate-400 transition hover:text-white"
                     >
-
-                        <ArrowLeft size={15} />
-
+                        <ArrowLeft size={16} />
                         Kembali
-
                     </Link>
 
                 </div>
-
             </header>
 
-            {/* =================================================
-          HERO
-      ================================================= */}
+            {/* HERO */}
 
-            <section className="relative overflow-hidden bg-grid">
+            <section className="relative overflow-hidden border-b border-white/5">
 
-                <div className="pointer-events-none absolute left-1/2 top-0 h-80 w-80 -translate-x-1/2 rounded-full bg-blue-600/10 blur-[100px]" />
+                <div className="absolute left-1/2 top-0 h-80 w-80 -translate-x-1/2 rounded-full bg-blue-600/10 blur-[100px]" />
 
-                <div className="container-main relative py-16 text-center sm:py-20">
+                <div className="relative mx-auto max-w-6xl px-5 py-16 text-center sm:py-20">
 
-                    {/* ICON */}
-
-                    <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-600 shadow-xl shadow-blue-600/20">
-
-                        <Award size={27} />
-
+                    <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-600 shadow-xl shadow-blue-600/20">
+                        <Award size={28} />
                     </div>
-
-                    {/* LABEL */}
 
                     <p className="mt-5 text-xs font-bold uppercase tracking-[0.2em] text-blue-300">
                         Kontribusi Mahasiswa
                     </p>
 
-                    {/* TITLE */}
-
                     <h1 className="mt-3 text-4xl font-black sm:text-5xl">
                         Laporkan Prestasimu
                     </h1>
-
-                    {/* DESCRIPTION */}
 
                     <p className="mx-auto mt-4 max-w-2xl text-sm leading-6 text-slate-400 sm:text-base">
                         Bagikan pencapaianmu agar dapat
@@ -550,29 +733,21 @@ export default function LaporPrestasiPage() {
                         mahasiswa lainnya.
                     </p>
 
-                    {/* BADGE */}
-
                     <div className="mx-auto mt-5 inline-flex items-center gap-2 rounded-full border border-emerald-400/10 bg-emerald-400/5 px-4 py-2 text-xs text-emerald-300">
-
                         <CheckCircle2 size={14} />
-
                         Semua prestasi boleh dilaporkan
                         tanpa batas waktu
-
                     </div>
 
                 </div>
-
             </section>
 
-            {/* =================================================
-          SUCCESS MESSAGE
-      ================================================= */}
+            {/* ALERT BERHASIL */}
 
             {submitted && (
-                <div className="container-main pb-6">
+                <div className="mx-auto max-w-4xl px-5 pt-6">
 
-                    <div className="mx-auto flex max-w-3xl items-start gap-3 rounded-2xl border border-emerald-400/20 bg-emerald-400/5 p-5 text-emerald-200">
+                    <div className="flex items-start gap-3 rounded-2xl border border-emerald-400/20 bg-emerald-400/5 p-5 text-emerald-200">
 
                         <CheckCircle2
                             size={21}
@@ -580,18 +755,15 @@ export default function LaporPrestasiPage() {
                         />
 
                         <div>
-
                             <p className="font-bold">
                                 Prestasi berhasil dikirim!
                             </p>
 
                             <p className="mt-1 text-sm text-emerald-200/70">
-                                Data prestasi telah berhasil
-                                disimpan dan akan melalui
-                                proses verifikasi sebelum
-                                ditampilkan.
+                                Data telah disimpan dan
+                                menunggu proses verifikasi
+                                admin.
                             </p>
-
                         </div>
 
                     </div>
@@ -599,14 +771,12 @@ export default function LaporPrestasiPage() {
                 </div>
             )}
 
-            {/* =================================================
-          ERROR MESSAGE
-      ================================================= */}
+            {/* ALERT ERROR */}
 
             {errorMessage && (
-                <div className="container-main pb-6">
+                <div className="mx-auto max-w-4xl px-5 pt-6">
 
-                    <div className="mx-auto flex max-w-3xl items-start gap-3 rounded-2xl border border-red-400/20 bg-red-400/5 p-5 text-red-200">
+                    <div className="flex items-start gap-3 rounded-2xl border border-red-400/20 bg-red-400/5 p-5 text-red-200">
 
                         <X
                             size={21}
@@ -614,7 +784,6 @@ export default function LaporPrestasiPage() {
                         />
 
                         <div>
-
                             <p className="font-bold">
                                 Gagal mengirim laporan
                             </p>
@@ -622,7 +791,6 @@ export default function LaporPrestasiPage() {
                             <p className="mt-1 text-sm text-red-200/70">
                                 {errorMessage}
                             </p>
-
                         </div>
 
                     </div>
@@ -630,39 +798,22 @@ export default function LaporPrestasiPage() {
                 </div>
             )}
 
-            {/* =================================================
-          FORM
-      ================================================= */}
+            {/* FORM */}
 
-            <section className="container-main pb-20 sm:pb-28">
+            <section className="mx-auto max-w-4xl px-5 py-8 pb-20">
 
                 <form
                     onSubmit={handleSubmit}
-                    className="mx-auto max-w-4xl space-y-6"
+                    className="space-y-6"
                 >
 
-                    {/* ===========================================
-              DATA MAHASISWA
-          ============================================ */}
+                    {/* DATA MAHASISWA */}
 
-                    <div className="rounded-3xl border border-white/10 bg-[#0B2342] p-6 shadow-xl sm:p-8">
-
-                        <div className="mb-7">
-
-                            <p className="text-xs font-bold uppercase tracking-[0.2em] text-blue-300">
-                                Bagian 01
-                            </p>
-
-                            <h2 className="mt-2 text-2xl font-black">
-                                Data Mahasiswa
-                            </h2>
-
-                            <p className="mt-2 text-sm text-slate-500">
-                                Isi data diri sesuai identitas
-                                mahasiswa.
-                            </p>
-
-                        </div>
+                    <FormSection
+                        number="01"
+                        title="Data Mahasiswa"
+                        description="Isi data diri sesuai identitas mahasiswa."
+                    >
 
                         <div className="grid gap-5 sm:grid-cols-2">
 
@@ -717,34 +868,17 @@ export default function LaporPrestasiPage() {
 
                         </div>
 
-                    </div>
+                    </FormSection>
 
-                    {/* ===========================================
-              DATA PRESTASI
-          ============================================ */}
+                    {/* DATA PRESTASI */}
 
-                    <div className="rounded-3xl border border-white/10 bg-[#0B2342] p-6 shadow-xl sm:p-8">
-
-                        <div className="mb-7">
-
-                            <p className="text-xs font-bold uppercase tracking-[0.2em] text-blue-300">
-                                Bagian 02
-                            </p>
-
-                            <h2 className="mt-2 text-2xl font-black">
-                                Data Prestasi
-                            </h2>
-
-                            <p className="mt-2 text-sm text-slate-500">
-                                Ceritakan pencapaian yang ingin
-                                kamu dokumentasikan.
-                            </p>
-
-                        </div>
+                    <FormSection
+                        number="02"
+                        title="Data Prestasi"
+                        description="Ceritakan pencapaian yang ingin kamu dokumentasikan."
+                    >
 
                         <div className="space-y-5">
-
-                            {/* NAMA PRESTASI */}
 
                             <InputField
                                 label="Nama Prestasi"
@@ -752,8 +886,6 @@ export default function LaporPrestasiPage() {
                                 placeholder="Contoh: Juara 1 Lomba Debat Nasional"
                                 required
                             />
-
-                            {/* CATEGORY + LEVEL */}
 
                             <div className="grid gap-5 sm:grid-cols-2">
 
@@ -773,15 +905,11 @@ export default function LaporPrestasiPage() {
 
                             </div>
 
-                            {/* RANK */}
-
                             <InputField
                                 label="Peringkat / Pencapaian"
                                 name="rank"
                                 placeholder="Contoh: Juara 1 / Finalis / Best Speaker"
                             />
-
-                            {/* COMPETITION */}
 
                             <InputField
                                 label="Nama Lomba / Kegiatan"
@@ -790,15 +918,11 @@ export default function LaporPrestasiPage() {
                                 required
                             />
 
-                            {/* ORGANIZER */}
-
                             <InputField
                                 label="Penyelenggara"
                                 name="organizer"
                                 placeholder="Nama lembaga / organisasi penyelenggara"
                             />
-
-                            {/* DATE */}
 
                             <div>
 
@@ -806,13 +930,10 @@ export default function LaporPrestasiPage() {
                                     htmlFor="achievementDate"
                                     className="mb-2 block text-sm font-semibold text-slate-200"
                                 >
-
                                     Tanggal Prestasi
-
                                     <span className="ml-1 text-blue-400">
                                         *
                                     </span>
-
                                 </label>
 
                                 <input
@@ -825,14 +946,10 @@ export default function LaporPrestasiPage() {
 
                                 <p className="mt-2 text-xs text-slate-600">
                                     Prestasi lama tetap dapat
-                                    dilaporkan. Tanggal hanya
-                                    digunakan sebagai informasi
-                                    dokumentasi.
+                                    dilaporkan.
                                 </p>
 
                             </div>
-
-                            {/* DESCRIPTION */}
 
                             <div>
 
@@ -855,203 +972,46 @@ export default function LaporPrestasiPage() {
 
                         </div>
 
-                    </div>
+                    </FormSection>
 
-                    {/* ===========================================
-              FOTO
-          ============================================ */}
+                    {/* FOTO */}
 
-                    <div className="rounded-3xl border border-white/10 bg-[#0B2342] p-6 shadow-xl sm:p-8">
-
-                        <div className="mb-7">
-
-                            <p className="text-xs font-bold uppercase tracking-[0.2em] text-blue-300">
-                                Bagian 03
-                            </p>
-
-                            <h2 className="mt-2 text-2xl font-black">
-                                Bukti & Foto
-                            </h2>
-
-                            <p className="mt-2 text-sm leading-6 text-slate-500">
-                                Upload bukti yang dapat
-                                membantu proses verifikasi
-                                prestasimu.
-                            </p>
-
-                        </div>
+                    <FormSection
+                        number="03"
+                        title="Bukti & Foto"
+                        description="Upload bukti yang dapat membantu proses verifikasi prestasimu."
+                    >
 
                         <div className="grid gap-6 md:grid-cols-2">
 
-                            {/* =======================================
-                  BUKTI PRESTASI
-              ======================================== */}
+                            <ImageUpload
+                                id="proof"
+                                title="Bukti Prestasi"
+                                required
+                                file={proofFile}
+                                preview={proofPreview}
+                                onChange={
+                                    handleProofChange
+                                }
+                                onRemove={removeProof}
+                            />
 
-                            <div>
-
-                                <label className="mb-3 block text-sm font-semibold text-slate-200">
-
-                                    Bukti Prestasi
-
-                                    <span className="ml-1 text-blue-400">
-                                        *
-                                    </span>
-
-                                </label>
-
-                                {!proofPreview ? (
-                                    <label
-                                        htmlFor="proof"
-                                        className="group flex min-h-64 cursor-pointer flex-col items-center justify-center rounded-2xl border border-dashed border-blue-400/20 bg-[#071A33] p-6 text-center transition hover:border-blue-400/40 hover:bg-blue-500/5"
-                                    >
-
-                                        <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-600/10 text-blue-300 transition group-hover:scale-110">
-
-                                            <Upload size={24} />
-
-                                        </div>
-
-                                        <p className="mt-5 text-sm font-bold">
-                                            Upload bukti prestasi
-                                        </p>
-
-                                        <p className="mt-2 text-xs text-slate-600">
-                                            JPG, PNG, WEBP ·
-                                            Maksimal 5 MB
-                                        </p>
-
-                                        <input
-                                            id="proof"
-                                            name="proofFile"
-                                            type="file"
-                                            accept="image/*"
-                                            onChange={
-                                                handleProofChange
-                                            }
-                                            className="hidden"
-                                        />
-
-                                    </label>
-                                ) : (
-                                    <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-[#071A33]">
-
-                                        <img
-                                            src={proofPreview}
-                                            alt="Preview bukti prestasi"
-                                            className="aspect-[4/3] w-full object-cover"
-                                        />
-
-                                        <button
-                                            type="button"
-                                            onClick={removeProof}
-                                            className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full bg-black/60 text-white backdrop-blur-md transition hover:bg-red-500"
-                                            aria-label="Hapus bukti"
-                                        >
-
-                                            <X size={17} />
-
-                                        </button>
-
-                                        <div className="border-t border-white/10 p-3">
-
-                                            <p className="truncate text-xs font-medium text-slate-300">
-                                                {proofFile?.name}
-                                            </p>
-
-                                        </div>
-
-                                    </div>
-                                )}
-
-                            </div>
-
-                            {/* =======================================
-                  FOTO MAHASISWA
-              ======================================== */}
-
-                            <div>
-
-                                <label className="mb-3 block text-sm font-semibold text-slate-200">
-
-                                    Foto Mahasiswa
-
-                                    <span className="ml-2 text-xs font-normal text-slate-600">
-                                        opsional
-                                    </span>
-
-                                </label>
-
-                                {!studentPhotoPreview ? (
-                                    <label
-                                        htmlFor="studentPhoto"
-                                        className="group flex min-h-64 cursor-pointer flex-col items-center justify-center rounded-2xl border border-dashed border-white/10 bg-[#071A33] p-6 text-center transition hover:border-blue-400/30 hover:bg-blue-500/5"
-                                    >
-
-                                        <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/5 text-slate-400 transition group-hover:scale-110 group-hover:text-blue-300">
-
-                                            <Camera size={24} />
-
-                                        </div>
-
-                                        <p className="mt-5 text-sm font-bold">
-                                            Upload foto mahasiswa
-                                        </p>
-
-                                        <p className="mt-2 text-xs text-slate-600">
-                                            JPG, PNG, WEBP ·
-                                            Maksimal 5 MB
-                                        </p>
-
-                                        <input
-                                            id="studentPhoto"
-                                            name="studentPhoto"
-                                            type="file"
-                                            accept="image/*"
-                                            onChange={
-                                                handleStudentPhotoChange
-                                            }
-                                            className="hidden"
-                                        />
-
-                                    </label>
-                                ) : (
-                                    <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-[#071A33]">
-
-                                        <img
-                                            src={studentPhotoPreview}
-                                            alt="Preview foto mahasiswa"
-                                            className="aspect-[4/3] w-full object-cover"
-                                        />
-
-                                        <button
-                                            type="button"
-                                            onClick={
-                                                removeStudentPhoto
-                                            }
-                                            className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full bg-black/60 text-white backdrop-blur-md transition hover:bg-red-500"
-                                            aria-label="Hapus foto mahasiswa"
-                                        >
-
-                                            <X size={17} />
-
-                                        </button>
-
-                                        <div className="border-t border-white/10 p-3">
-
-                                            <p className="truncate text-xs font-medium text-slate-300">
-                                                {studentPhoto?.name}
-                                            </p>
-
-                                        </div>
-
-                                    </div>
-                                )}
-
-                            </div>
+                            <ImageUpload
+                                id="studentPhoto"
+                                title="Foto Mahasiswa"
+                                file={studentPhoto}
+                                preview={
+                                    studentPhotoPreview
+                                }
+                                onChange={
+                                    handleStudentPhotoChange
+                                }
+                                onRemove={
+                                    removeStudentPhoto
+                                }
+                            />
 
                         </div>
-
-                        {/* INFO */}
 
                         <div className="mt-6 flex items-start gap-3 rounded-2xl border border-blue-400/10 bg-blue-400/5 p-4">
 
@@ -1061,81 +1021,81 @@ export default function LaporPrestasiPage() {
                             />
 
                             <p className="text-xs leading-5 text-slate-400">
-                                Bukti prestasi digunakan sebagai
-                                bahan verifikasi sebelum data
-                                ditampilkan secara publik.
-                                Jangan mengunggah dokumen yang
-                                mengandung data pribadi sensitif
-                                yang tidak diperlukan.
+                                File akan dikompres otomatis
+                                sebelum upload agar proses
+                                pengiriman lebih cepat. Format
+                                JPG, PNG, atau WEBP dengan
+                                ukuran maksimal 5 MB.
                             </p>
 
                         </div>
 
-                    </div>
+                    </FormSection>
 
-                    {/* ===========================================
-              SUBMIT
-          ============================================ */}
+                    {/* SUBMIT */}
 
-                    <div className="rounded-3xl border border-blue-400/10 bg-gradient-to-br from-blue-600/10 to-transparent p-6 sm:p-8">
+                    <div className="rounded-3xl border border-blue-400/10 bg-blue-600/5 p-6 sm:p-8">
 
-                        <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="flex flex-col gap-6">
 
                             <div>
-
                                 <h2 className="font-bold">
                                     Siap mengirim prestasimu?
                                 </h2>
 
                                 <p className="mt-1 text-xs leading-5 text-slate-500">
-                                    Pastikan data yang kamu
-                                    masukkan sudah benar sebelum
-                                    dikirim.
+                                    Pastikan semua data sudah
+                                    benar sebelum dikirim.
                                 </p>
-
                             </div>
 
                             {isSubmitting && (
-                                <div className="w-full sm:w-auto sm:min-w-[240px]">
-                                    <div className="mb-2 flex items-center justify-between text-[11px] font-semibold text-slate-400">
-                                        <span className="flex items-center gap-2">
-                                            <span className="h-2 w-2 animate-pulse rounded-full bg-blue-400" />
+                                <div>
+
+                                    <div className="mb-2 flex justify-between text-xs font-semibold">
+
+                                        <span className="text-slate-400">
                                             Mengirim prestasi...
                                         </span>
+
                                         <span className="text-blue-300">
                                             {uploadProgress}%
                                         </span>
+
                                     </div>
 
                                     <div className="h-2 overflow-hidden rounded-full bg-white/10">
+
                                         <div
-                                            className="h-full rounded-full bg-blue-500 transition-all duration-300 ease-out"
-                                            style={{ width: `${uploadProgress}%` }}
+                                            className="h-full rounded-full bg-blue-500 transition-all duration-300"
+                                            style={{
+                                                width: `${uploadProgress}%`,
+                                            }}
                                         />
+
                                     </div>
+
                                 </div>
                             )}
 
                             <button
                                 type="submit"
                                 disabled={isSubmitting}
-                                className="inline-flex min-w-[190px] flex-col items-center justify-center gap-1 rounded-xl bg-blue-600 px-7 py-3.5 text-sm font-bold text-white shadow-xl shadow-blue-600/20 transition hover:-translate-y-0.5 hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-70"
+                                className="flex h-14 w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-6 text-sm font-bold text-white shadow-xl shadow-blue-600/20 transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-60"
                             >
+
                                 {isSubmitting ? (
                                     <>
-                                        <span className="flex items-center gap-2">
-                                            <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-                                            Mengirim prestasi...
-                                        </span>
+                                        <span className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                                        Mengirim...
                                     </>
                                 ) : (
                                     <>
-                                        <span className="flex items-center gap-2">
-                                            <Send size={17} />
-                                            Kirim Prestasi
-                                        </span>
+                                        <Send size={18} />
+                                        Kirim Prestasi
                                     </>
                                 )}
+
                             </button>
 
                         </div>
@@ -1146,13 +1106,11 @@ export default function LaporPrestasiPage() {
 
             </section>
 
-            {/* =================================================
-          FOOTER
-      ================================================= */}
+            {/* FOOTER */}
 
             <footer className="border-t border-white/10 bg-[#041225]">
 
-                <div className="container-main py-8 text-center">
+                <div className="mx-auto max-w-6xl px-5 py-8 text-center">
 
                     <p className="text-xs text-slate-600">
                         © 2026 PAI Segudang Prestasi ·
@@ -1168,7 +1126,47 @@ export default function LaporPrestasiPage() {
 }
 
 // =====================================================
-// INPUT COMPONENT
+// FORM SECTION
+// =====================================================
+
+function FormSection({
+    number,
+    title,
+    description,
+    children,
+}: {
+    number: string;
+    title: string;
+    description: string;
+    children: React.ReactNode;
+}) {
+    return (
+        <div className="rounded-3xl border border-white/10 bg-[#0B2342] p-6 shadow-xl sm:p-8">
+
+            <div className="mb-7">
+
+                <p className="text-xs font-bold uppercase tracking-[0.2em] text-blue-300">
+                    Bagian {number}
+                </p>
+
+                <h2 className="mt-2 text-2xl font-black">
+                    {title}
+                </h2>
+
+                <p className="mt-2 text-sm text-slate-500">
+                    {description}
+                </p>
+
+            </div>
+
+            {children}
+
+        </div>
+    );
+}
+
+// =====================================================
+// INPUT
 // =====================================================
 
 function InputField({
@@ -1216,7 +1214,7 @@ function InputField({
 }
 
 // =====================================================
-// SELECT COMPONENT
+// SELECT
 // =====================================================
 
 function SelectField({
@@ -1275,6 +1273,127 @@ function SelectField({
                 ))}
 
             </select>
+
+        </div>
+    );
+}
+
+// =====================================================
+// IMAGE UPLOAD
+// =====================================================
+
+function ImageUpload({
+    id,
+    title,
+    required = false,
+    file,
+    preview,
+    onChange,
+    onRemove,
+}: {
+    id: string;
+    title: string;
+    required?: boolean;
+    file: File | null;
+    preview: string | null;
+    onChange: (
+        event: ChangeEvent<HTMLInputElement>,
+    ) => void;
+    onRemove: () => void;
+}) {
+    return (
+        <div>
+
+            <label className="mb-3 block text-sm font-semibold text-slate-200">
+
+                {title}
+
+                {required ? (
+                    <span className="ml-1 text-blue-400">
+                        *
+                    </span>
+                ) : (
+                    <span className="ml-2 text-xs font-normal text-slate-600">
+                        opsional
+                    </span>
+                )}
+
+            </label>
+
+            {!preview ? (
+
+                <label
+                    htmlFor={id}
+                    className="group flex min-h-64 cursor-pointer flex-col items-center justify-center rounded-2xl border border-dashed border-white/10 bg-[#071A33] p-6 text-center transition hover:border-blue-400/40 hover:bg-blue-500/5"
+                >
+
+                    <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-600/10 text-blue-300 transition group-hover:scale-110">
+                        {id === "proof" ? (
+                            <Upload size={24} />
+                        ) : (
+                            <Camera size={24} />
+                        )}
+                    </div>
+
+                    <p className="mt-5 text-sm font-bold">
+                        Upload {title.toLowerCase()}
+                    </p>
+
+                    <p className="mt-2 text-xs text-slate-600">
+                        JPG, PNG, WEBP · Maksimal 5 MB
+                    </p>
+
+                    <input
+                        id={id}
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp"
+                        onChange={onChange}
+                        className="hidden"
+                    />
+
+                </label>
+
+            ) : (
+
+                <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-[#071A33]">
+
+                    <img
+                        src={preview}
+                        alt={`Preview ${title}`}
+                        className="aspect-[4/3] w-full object-cover"
+                    />
+
+                    <button
+                        type="button"
+                        onClick={onRemove}
+                        className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full bg-black/60 text-white backdrop-blur-md transition hover:bg-red-500"
+                        aria-label={`Hapus ${title}`}
+                    >
+                        <X size={17} />
+                    </button>
+
+                    <div className="border-t border-white/10 p-3">
+
+                        <p className="truncate text-xs font-medium text-slate-300">
+                            {file?.name}
+                        </p>
+
+                        {file && (
+                            <p className="mt-1 text-[10px] text-slate-600">
+                                {(
+                                    file.size /
+                                    1024 /
+                                    1024
+                                ).toFixed(2)}{" "}
+                                MB
+                            </p>
+                        )}
+
+                    </div>
+
+                </div>
+
+            )}
 
         </div>
     );
