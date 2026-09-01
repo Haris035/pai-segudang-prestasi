@@ -52,23 +52,23 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     locale: "id_ID",
-    url: "/",
+    url: "https://prestasipai.my.id",
     siteName: "PAI Segudang Prestasi",
     title: "PAI Segudang Prestasi | HIMA PAI UIKA Bogor",
     description:
       "Ruang apresiasi dan dokumentasi prestasi mahasiswa Pendidikan Agama Islam UIKA Bogor.",
     images: [
       {
-        url: "/images/Hima-Pai-Uika.png",
-        width: 512,
-        height: 512,
-        alt: "Logo HIMA PAI UIKA Bogor",
+        url: "/og-image/og-image.jpg",
+        width: 1200,
+        height: 630,
+        alt: "PAI Segudang Prestasi | HIMA PAI UIKA Bogor",
       },
     ],
   },
 
   twitter: {
-    card: "summary",
+    card: "summary_large_image",
     title: "PAI Segudang Prestasi | HIMA PAI UIKA Bogor",
     description:
       "Ruang apresiasi dan dokumentasi prestasi mahasiswa Pendidikan Agama Islam UIKA Bogor.",
